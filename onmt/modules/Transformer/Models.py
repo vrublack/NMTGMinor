@@ -5,8 +5,14 @@ from onmt.modules.Transformer.Layers import EncoderLayer, DecoderLayer, Position
 from onmt.modules.BaseModel import NMTModel, Reconstructor
 import onmt
 from onmt.modules.WordDrop import embedded_dropout
+from onmt.modules.Checkpoint import checkpoint
 
 
+def custom_layer(module):
+    def custom_forward(*args):
+        output = module(*args)
+        return output
+    return custom_forward
 
 class TransformerEncoder(nn.Module):
     """Encoder in 'Attention is all you need'
@@ -43,7 +49,7 @@ class TransformerEncoder(nn.Module):
         elif opt.time == 'lstm':
             self.time_transformer = nn.LSTM(self.model_size, self.model_size, 1, batch_first=True)
         
-        self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d')
+        self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d', static=False)
         
         self.postprocess_layer = PrePostProcessing(self.model_size, 0, sequence='n')
         
@@ -81,8 +87,13 @@ class TransformerEncoder(nn.Module):
         
         context = emb.contiguous()
         
-        for layer in self.layer_modules:                          
-            context = layer(context, mask_src, pad_mask=None)      # batch_size x len_src x d_model
+        for i, layer in enumerate(self.layer_modules):
+            if len(self.layer_modules) - i <= onmt.Constants.checkpointing and self.training:        
+                context = checkpoint(custom_layer(layer), context, mask_src, pad_mask)
+                
+                #~ print(type(context))
+            else:
+                context = layer(context, mask_src, pad_mask=None)      # batch_size x len_src x d_model
         
         # From Google T2T
         # if normalization is done in layer_preprocess, then it should also be done
@@ -126,7 +137,7 @@ class TransformerDecoder(nn.Module):
         elif opt.time == 'lstm':
             self.time_transformer = nn.LSTM(self.model_size, self.model_size, 1, batch_first=True)
         
-        self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d')
+        self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d', static=False)
         if self.version == 1.0:
             self.postprocess_layer = PrePostProcessing(self.model_size, 0, sequence='n')
         
@@ -185,10 +196,18 @@ class TransformerDecoder(nn.Module):
         pad_mask_src = torch.autograd.Variable(1 - mask_src.squeeze(1))
         
         
-        for layer in self.layer_modules:
-            output, coverage = layer(output, context, mask_tgt, mask_src, 
-                                        pad_mask_tgt=pad_mask_tgt, pad_mask_src=None) # batch_size x len_src x d_model
-        
+        for i, layer in enumerate(self.layer_modules):
+            
+            if len(self.layer_modules) - i <= onmt.Constants.checkpointing and self.training:           
+                
+                output, coverage = checkpoint(custom_layer(layer), output, context, mask_tgt, mask_src, 
+                                            pad_mask_tgt, pad_mask_src) # batch_size x len_src x d_model
+                
+            else:
+                output, coverage = layer(output, context, mask_tgt, mask_src, 
+                                            pad_mask_tgt, pad_mask_src) # batch_size x len_src x d_model
+            
+            
         # From Google T2T
         # if normalization is done in layer_preprocess, then it should also be done
         # on the output, since the output can grow very large, being the sum of

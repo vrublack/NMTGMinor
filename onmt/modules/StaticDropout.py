@@ -11,16 +11,15 @@ class StaticDropoutFunction(Function):
         
         
         ctx.train = train
-        ctx.noise = module.noise
         ctx.module = module
         ctx.p = module.p
 
         if ctx.p == 0 or not ctx.train:
             return input
+            
+        ctx.noise = module.noise
 
-        output = input.clone()
-
-        output.mul_(ctx.noise)
+        output = input * ctx.noise
 
         return output
 
@@ -46,13 +45,14 @@ class StaticDropout(nn.Module):
 
     def forward(self, input):
         
-        if self.noise_created == False:
+        if self.noise_created == False and self.training:
             self.noise = input.new().resize_as_(input)
             if self.p == 1:
                 self.noise.fill_(0)
             else:
                 self.noise.bernoulli_(1 - self.p).div_(1 - self.p)
             self.noise = self.noise.expand_as(input)
+            self.noise_created = True
      
         return StaticDropoutFunction.apply(input, self, self.training)
 

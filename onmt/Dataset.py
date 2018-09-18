@@ -165,8 +165,8 @@ class Dataset(object):
         #split that batch to number of gpus
         
         samples = []
-        split_size = int(math.ceil(batch[0].size(1) / self.n_gpu))  
-        
+        split = self.n_gpu if self.n_gpu > 0 else 1
+        split_size = int(math.ceil(batch[0].size(1) / split))
         # maybe we need a more smart splitting function ?
         
         if batch[1] is not None:

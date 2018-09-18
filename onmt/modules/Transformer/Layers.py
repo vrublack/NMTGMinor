@@ -165,7 +165,21 @@ class PrePostProcessing(nn.Module):
                     else:
                         output = F.relu(self.k) * output + input_tensor
         return output
-        
+
+
+class Bottleneck(nn.Module):
+
+    def __init__(self, d_model):
+        super(Bottleneck, self).__init__()
+        self.d_model = d_model
+
+    def forward(self, tensor):
+        squashed = tensor.mean(dim=1, keepdim=True)
+        # repeat mean so that the dimensionality stays the same
+        repeated = squashed.repeat((1, tensor.shape[1], 1))
+        return repeated
+
+
 class MultiHeadAttention(nn.Module):
     """Applies multi-head attentions to inputs (query, key, value)
     Args:

@@ -1,7 +1,7 @@
 import numpy as np
 import torch, math
 import torch.nn as nn
-from onmt.modules.Transformer.Layers import EncoderLayer, DecoderLayer, PositionalEncoding, variational_dropout, PrePostProcessing
+from onmt.modules.Transformer.Layers import EncoderLayer, DecoderLayer, PositionalEncoding, variational_dropout, PrePostProcessing, Bottleneck
 from onmt.modules.BaseModel import NMTModel, Reconstructor, DecoderState
 import onmt
 from onmt.modules.WordDrop import embedded_dropout
@@ -57,7 +57,9 @@ class TransformerEncoder(nn.Module):
         self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d', static=False)
         
         self.postprocess_layer = PrePostProcessing(self.model_size, 0, sequence='n')
-        
+
+        self.bottleneck_layer = Bottleneck(self.model_size)
+
         self.positional_encoder = positional_encoder
         
         self.layer_modules = nn.ModuleList([EncoderLayer(self.n_heads, self.model_size, self.dropout, self.inner_size, self.attn_dropout) for _ in range(self.layers)])
@@ -152,7 +154,8 @@ class TransformerEncoder(nn.Module):
         # on the output, since the output can grow very large, being the sum of
         # a whole stack of unnormalized layer outputs.    
         context = self.postprocess_layer(context)
-            
+
+        context = self.bottleneck_layer(context)
         
         return context, mask_src    
         

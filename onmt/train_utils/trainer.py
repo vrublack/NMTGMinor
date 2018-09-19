@@ -29,6 +29,8 @@ class BaseTrainer(object):
         self.cuda = (len(opt.gpus) >= 1)
         
         self.loss_function = loss_function
+        self.adv1_loss_function = nn.BCELoss()
+
         self.start_time = 0
         
         
@@ -115,7 +117,9 @@ class XETrainer(BaseTrainer):
         torch.save(checkpoint, file_name)
         
     def eval(self, data):
-        total_loss = 0
+        epoch_loss = 0
+        epoch_loss_reconstruction = 0
+        epoch_loss_adv1 = 0
         total_words = 0
                 
         batch_order = data.create_order(random=False)
@@ -134,15 +138,20 @@ class XETrainer(BaseTrainer):
                 """
                 outputs, classified_repr = self.model(batch)
                 targets = batch[0][1:]
-                
-                loss_data, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator, backward=False)
-                
-#~ 
-                total_loss += loss_data
+                targets_style = batch[1]
+
+                loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator, backward=False)
+                loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
+                loss_total = loss_reconstruction + loss_adv1
+
+#~
+                epoch_loss += loss_total
+                epoch_loss_reconstruction += loss_reconstruction
+                epoch_loss_adv1 += loss_adv1
                 total_words += targets.data.ne(onmt.Constants.PAD).sum().item()
 
         self.model.train()
-        return total_loss / total_words
+        return epoch_loss / total_words, epoch_loss_reconstruction / total_words, epoch_loss_adv1 / total_words
         
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
         
@@ -247,9 +256,9 @@ class XETrainer(BaseTrainer):
                     num_accumulated_sents = 0
                     num_updates = self.optim._step
                     if opt.save_every > 0 and num_updates % opt.save_every == -1 % opt.save_every :
-                        valid_loss = self.eval(self.validData)
+                        valid_loss, reconstr, adv1 = self.eval(self.validData)
                         valid_ppl = math.exp(min(valid_loss, 100))
-                        print('Validation perplexity: %g' % valid_ppl)
+                        print('Validation perplexity: {}\nReconstruction loss: {}\nAdv1 loss: {}'.format(valid_ppl, reconstr, adv1))
                         
                         ep = float(epoch) - 1. + ((float(i) + 1.) / nSamples)
                         
@@ -325,12 +334,11 @@ class XETrainer(BaseTrainer):
             print('Initializing model parameters')
             init_model_parameters(model, opt)
             resume=False
-        
-        
-        # valid_loss = self.eval(self.validData)
-        # valid_ppl = math.exp(min(valid_loss, 100))
-        # print('Validation perplexity: %g' % valid_ppl)
-        
+
+        valid_loss, reconstr, adv1 = self.eval(self.validData)
+        valid_ppl = math.exp(min(valid_loss, 100))
+        print('Validation perplexity: {}\nReconstruction loss: {}\nAdv1 loss: {}'.format(valid_ppl, reconstr, adv1))
+
         self.start_time = time.time()
         
         for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
@@ -344,13 +352,15 @@ class XETrainer(BaseTrainer):
             print('Train perplexity: %g' % train_ppl)
 
             #  (2) evaluate on the validation set
-            valid_loss = self.eval(self.validData)
+            valid_loss, reconstr, adv1 = self.eval(self.validData)
             valid_ppl = math.exp(min(valid_loss, 100))
-            print('Validation perplexity: %g' % valid_ppl)
+            print('Validation perplexity: {}\nReconstruction loss: {}\nAdv1 loss: {}'.format(valid_ppl, reconstr, adv1))
             
             
             if epoch % opt.save_every_epoch == 0:
                 self.save(epoch, valid_ppl)
+
+            self.save(epoch, valid_ppl)
             batchOrder = None
             iteration = None
             resume = False

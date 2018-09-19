@@ -20,8 +20,7 @@ class NonParallelDataset(object):
         style1 = srcData
         style2 = tgtData
 
-        concatSrc = style1 + style2
-        targets = [1] * len(style1) + [2] * len(style2)
+        concatSrc, targets = self.concat(style1, style2)
         self.n = len(concatSrc)
 
         self.src = concatSrc
@@ -51,6 +50,13 @@ class NonParallelDataset(object):
         self.batchOrder = None
         # else:
             # self.numBatches = math.ceil(len(self.src)/batchSize)
+
+        # we want to mix the style labels
+        self.shuffle()
+
+    def concat(self, style1, style2):
+        return style1 + style2, [[0, 1]] * len(style1) + [[1, 0]] * len(style2)
+
 
     #~ # This function allocates the mini-batches (grouping sentences with the same size)
     def allocateBatch(self):
@@ -195,6 +201,7 @@ class NonParallelDataset(object):
     def shuffle(self):
         data = list(zip(self.src, self.tgt))
         self.src, self.tgt = zip(*[data[i] for i in torch.randperm(len(data))])
+        print('dataset shuffled')
 
     def set_index(self, iteration):
 

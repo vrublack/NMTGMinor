@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch.nn.functional import softmax
 
 class RepresentationClassifier(nn.Module):
     """
@@ -14,4 +14,6 @@ class RepresentationClassifier(nn.Module):
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
-        return x
+        x = x.squeeze(1)
+        x.squeeze(1)
+        return softmax(x, dim=1)

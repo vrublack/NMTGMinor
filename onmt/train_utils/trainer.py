@@ -133,7 +133,7 @@ class XETrainer(BaseTrainer):
                         prob distribution from decoder generator
                 """
                 outputs, classified_repr = self.model(batch)
-                targets = batch[1][1:]
+                targets = batch[0][1:]
                 
                 loss_data, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator, backward=False)
                 

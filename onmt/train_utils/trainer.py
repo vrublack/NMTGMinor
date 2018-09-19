@@ -132,7 +132,7 @@ class XETrainer(BaseTrainer):
                         hidden states from decoder or
                         prob distribution from decoder generator
                 """
-                outputs = self.model(batch)
+                outputs, classified_repr = self.model(batch)
                 targets = batch[1][1:]
                 
                 loss_data, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator, backward=False)
@@ -196,11 +196,10 @@ class XETrainer(BaseTrainer):
             oom = False
             try:
             
-                outputs = self.model(batch)
+                outputs, classified_repr = self.model(batch)
                     
-                targets = batch[1][1:]
-                tgt_inputs = batch[1][:-1]
-                
+                targets = batch[0][1:]
+
                 batch_size = targets.size(1)
                 
                 tgt_mask = targets.data.ne(onmt.Constants.PAD)
@@ -328,9 +327,9 @@ class XETrainer(BaseTrainer):
             resume=False
         
         
-        valid_loss = self.eval(self.validData)
-        valid_ppl = math.exp(min(valid_loss, 100))
-        print('Validation perplexity: %g' % valid_ppl)
+        # valid_loss = self.eval(self.validData)
+        # valid_ppl = math.exp(min(valid_loss, 100))
+        # print('Validation perplexity: %g' % valid_ppl)
         
         self.start_time = time.time()
         

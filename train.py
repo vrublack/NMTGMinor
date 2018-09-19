@@ -3,6 +3,7 @@ from __future__ import division
 import onmt
 import onmt.Markdown
 import onmt.modules
+from onmt.NonParallelDataset import NonParallelDataset
 import argparse
 import torch
 import torch.nn as nn
@@ -225,19 +226,18 @@ def main():
         #~ checkpoint = None
     
 
-    trainData = onmt.Dataset(dataset['train']['src'],
-                             dataset['train']['tgt'], opt.batch_size_words, opt.gpus,
+    trainData = NonParallelDataset(dataset['train']['style1'],
+                             dataset['train']['style2'], opt.batch_size_words, opt.gpus,
                              data_type=dataset.get("type", "text"), max_seq_num=opt.batch_size_sents)
-    validData = onmt.Dataset(dataset['valid']['src'],
-                             dataset['valid']['tgt'], opt.batch_size_words, opt.gpus,
+    validData = NonParallelDataset(dataset['valid']['style1'],
+                             dataset['valid']['style2'], opt.batch_size_words, opt.gpus,
                              volatile=True,
                              data_type=dataset.get("type", "text"), max_seq_num=opt.batch_size_sents)
 
     dicts = dataset['dicts']
-    print(' * vocabulary size. source = %d; target = %d' %
-          (dicts['src'].size(), dicts['tgt'].size()))
-    print(' * number of training sentences. %d' %
-          len(dataset['train']['src']))
+    print(' * vocabulary size. style1 = %d; style2 = %d' %
+          (dicts['style1'].size(), dicts['style2'].size()))
+    print(' * number of training sentences. %d' % trainData.n)
     print(' * maximum batch size (words per batch). %d' % opt.batch_size_words)
 
     print('Building model...')
@@ -245,7 +245,7 @@ def main():
     
     
     """ Building the loss function """
-    loss_function = NMTLossFunc(dataset['dicts']['tgt'].size(), 
+    loss_function = NMTLossFunc(dataset['dicts']['style1'].size(),
                                         label_smoothing=opt.label_smoothing,
                                         shard_size=opt.max_generator_batches)
     

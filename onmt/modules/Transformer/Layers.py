@@ -177,7 +177,7 @@ class Bottleneck(nn.Module):
         squashed = tensor.mean(dim=1, keepdim=True)
         # repeat mean so that the dimensionality stays the same
         repeated = squashed.repeat((1, tensor.shape[1], 1))
-        return repeated
+        return repeated, squashed
 
 
 class MultiHeadAttention(nn.Module):

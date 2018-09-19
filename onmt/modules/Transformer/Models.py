@@ -8,7 +8,7 @@ from onmt.modules.WordDrop import embedded_dropout
 #~ from onmt.modules.Checkpoint import checkpoint
 from torch.utils.checkpoint import checkpoint
 from torch.autograd import Variable
-
+from style.Classifier import RepresentationClassifier
 
 
 def custom_layer(module):
@@ -155,9 +155,9 @@ class TransformerEncoder(nn.Module):
         # a whole stack of unnormalized layer outputs.    
         context = self.postprocess_layer(context)
 
-        context = self.bottleneck_layer(context)
-        
-        return context, mask_src    
+        inflated_context, context = self.bottleneck_layer(context)
+
+        return inflated_context, mask_src, context
         
 
 class TransformerDecoder(nn.Module):
@@ -414,8 +414,13 @@ class TransformerDecoder(nn.Module):
         
 class Transformer(NMTModel):
     """Main model in 'Attention is all you need' """
-    
-        
+
+    def __init__(self, encoder, decoder, generator=None):
+        super(Transformer, self).__init__(encoder, decoder, generator)
+
+        self.repr_classifier = RepresentationClassifier(encoder.model_size, encoder.model_size // 2)
+
+
     def forward(self, input, grow=False):
         """
         Inputs Shapes: 
@@ -428,18 +433,20 @@ class Transformer(NMTModel):
             
         """
         src = input[0]
-        tgt = input[1][:-1]  # exclude last target from inputs
-        
+        tgt = input[0][:-1]  # exclude last target from inputs
+
         src = src.transpose(0, 1) # transpose to have batch first
         tgt = tgt.transpose(0, 1)
-        
-        context, src_mask = self.encoder(src, grow=grow)
-        
-        output, coverage = self.decoder(tgt, context, src, grow=grow)
+
+        inflated_context, src_mask, context = self.encoder(src, grow=grow)
+
+        classified_repr = self.repr_classifier(context)
+
+        output, coverage = self.decoder(tgt, inflated_context, src, grow=grow)
         
         output = output.transpose(0, 1) # transpose to have time first, like RNN models
-        
-        return output
+
+        return output, classified_repr
         
     def create_decoder_state(self, src, context, beamSize=1):
         

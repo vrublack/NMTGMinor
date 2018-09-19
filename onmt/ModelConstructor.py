@@ -59,10 +59,10 @@ def build_model(opt, dicts):
         #~ elif opt.time == 'lstm':
             #~ positional_encoder = nn.LSTM(opt.model_size, opt.model_size, 1, batch_first=True)
         
-        encoder = TransformerEncoder(opt, dicts['src'], positional_encoder)
-        decoder = TransformerDecoder(opt, dicts['tgt'], positional_encoder)
+        encoder = TransformerEncoder(opt, dicts['style1'], positional_encoder)
+        decoder = TransformerDecoder(opt, dicts['style1'], positional_encoder)
         
-        generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['tgt'].size())
+        generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
         
         model = Transformer(encoder, decoder, generator)    
         

@@ -18,43 +18,43 @@ onmt.Markdown.add_md_help_argument(parser)
 
 parser.add_argument('-config',    help="Read options from this file")
 
-parser.add_argument('-src_type', default="text",
-                    help="Type of the source input. Options are [text|img].")
+parser.add_argument('-style1_type', default="text",
+                    help="Type of the style1 input. Options are [text|img].")
 parser.add_argument('-sort_type', default="ascending",
                     help="Type of sorting. Options are [ascending|descending].")
-parser.add_argument('-src_img_dir', default=".",
-                    help="Location of source images")
+parser.add_argument('-style1_img_dir', default=".",
+                    help="Location of style1 images")
 
 
-parser.add_argument('-train_src', required=True,
-                    help="Path to the training source data")
-parser.add_argument('-train_tgt', required=True,
-                    help="Path to the training target data")
-parser.add_argument('-valid_src', required=True,
-                    help="Path to the validation source data")
-parser.add_argument('-valid_tgt', required=True,
-                    help="Path to the validation target data")
+parser.add_argument('-train_style1', required=True,
+                    help="Path to the training style1 data")
+parser.add_argument('-train_style2', required=True,
+                    help="Path to the training style2 data")
+parser.add_argument('-valid_style1', required=True,
+                    help="Path to the validation style1 data")
+parser.add_argument('-valid_style2', required=True,
+                    help="Path to the validation style2 data")
 
 parser.add_argument('-save_data', required=True,
                     help="Output file for the prepared data")
 
-parser.add_argument('-src_vocab_size', type=int, default=50000,
-                    help="Size of the source vocabulary")
-parser.add_argument('-tgt_vocab_size', type=int, default=50000,
-                    help="Size of the target vocabulary")
-parser.add_argument('-src_vocab',
-                    help="Path to an existing source vocabulary")
-parser.add_argument('-tgt_vocab',
-                    help="Path to an existing target vocabulary")
+parser.add_argument('-style1_vocab_size', type=int, default=50000,
+                    help="Size of the style1 vocabulary")
+parser.add_argument('-style2_vocab_size', type=int, default=50000,
+                    help="Size of the style2 vocabulary")
+parser.add_argument('-style1_vocab',
+                    help="Path to an existing style1 vocabulary")
+parser.add_argument('-style2_vocab',
+                    help="Path to an existing style2 vocabulary")
 
-parser.add_argument('-src_seq_length', type=int, default=64,
-                    help="Maximum source sequence length")
-parser.add_argument('-src_seq_length_trunc', type=int, default=0,
-                    help="Truncate source sequence length.")
-parser.add_argument('-tgt_seq_length', type=int, default=66,
-                    help="Maximum target sequence length to keep.")
-parser.add_argument('-tgt_seq_length_trunc', type=int, default=0,
-                    help="Truncate target sequence length.")
+parser.add_argument('-style1_seq_length', type=int, default=64,
+                    help="Maximum style1 sequence length")
+parser.add_argument('-style1_seq_length_trunc', type=int, default=0,
+                    help="Truncate style1 sequence length.")
+parser.add_argument('-style2_seq_length', type=int, default=66,
+                    help="Maximum style2 sequence length to keep.")
+parser.add_argument('-style2_seq_length_trunc', type=int, default=0,
+                    help="Truncate style2 sequence length.")
 
 parser.add_argument('-shuffle',    type=int, default=1,
                     help="Shuffle data")
@@ -63,7 +63,7 @@ parser.add_argument('-seed',       type=int, default=3435,
                     help="Random seed")
 
 parser.add_argument('-lower', action='store_true', help='lowercase data')
-parser.add_argument('-join_vocab', action='store_true', help='Using one dictionary for both source and target')
+parser.add_argument('-join_vocab', action='store_true', help='Using one dictionary for both style1 and style2')
 
 parser.add_argument('-report_every', type=int, default=100000,
                     help="Report status every this many sentences")
@@ -143,59 +143,36 @@ def saveVocabulary(name, vocab, file):
     vocab.writeFile(file)
 
 
-def makeData(srcFile, tgtFile, srcDicts, tgtDicts, max_src_length=64, max_tgt_length=64):
-    src, tgt = [], []
-    sizes = []
+def makeData(style1File, style2File, style1Dicts, style2Dicts, max_style1_length=64, max_style2_length=64):
+    style1, style2 = [], []
+    sizesStyle1 = []
+    sizesStyle2 = []
+
+    print('Processing %s & %s ...' % (style1File, style2File))
+    style1F = open(style1File)
+    style2F = open(style2File)
+
     count, ignored = 0, 0
+    for l in style1F.readlines():
+        l = l.strip()
 
-    print('Processing %s & %s ...' % (srcFile, tgtFile))
-    srcF = open(srcFile)
-    tgtF = open(tgtFile)
-
-    while True:
-        sline = srcF.readline()
-        tline = tgtF.readline()
-
-        # normal end of file
-        if sline == "" and tline == "":
-            break
-
-        # source or target does not have same number of lines
-        if sline == "" or tline == "":
-            print('WARNING: src and tgt do not have the same # of sentences')
-            break
-
-        sline = sline.strip()
-        tline = tline.strip()
-
-        # source and/or target are empty
-        if sline == "" or tline == "":
-            print('WARNING: ignoring an empty line ('+str(count+1)+')')
+        # style1 and/or style2 are empty
+        if l == "":
+            print('WARNING: ignoring an empty line (' + str(count + 1) + ')')
             continue
 
-        srcWords = sline.split()
-        tgtWords = tline.split()
+        words = l.split()
 
-        if len(srcWords) <= max_src_length \
-           and len(tgtWords) <= max_tgt_length - 2:
+        if len(words) <= max_style1_length:
 
             # Check truncation condition.
-            if opt.src_seq_length_trunc != 0:
-                srcWords = srcWords[:opt.src_seq_length_trunc]
-            if opt.tgt_seq_length_trunc != 0:
-                tgtWords = tgtWords[:opt.tgt_seq_length_trunc]
-            
-            
-            # For src text, we use BOS for possible reconstruction
-            src += [srcDicts.convertToIdx(srcWords,
-                                              onmt.Constants.UNK_WORD)]
-                                              
+            if opt.style1_seq_length_trunc != 0:
+                words = words[:opt.style1_seq_length_trunc]
 
-            tgt += [tgtDicts.convertToIdx(tgtWords,
-                                          onmt.Constants.UNK_WORD,
-                                          onmt.Constants.BOS_WORD,
-                                          onmt.Constants.EOS_WORD)]
-            sizes += [len(srcWords)]
+            style1 += [style1Dicts.convertToIdx(words,
+                                                onmt.Constants.UNK_WORD)]
+
+            sizesStyle1 += [len(words)]
         else:
             ignored += 1
 
@@ -204,26 +181,58 @@ def makeData(srcFile, tgtFile, srcDicts, tgtDicts, max_src_length=64, max_tgt_le
         if count % opt.report_every == 0:
             print('... %d sentences prepared' % count)
 
-    srcF.close()
-    tgtF.close()
+
+    count, ignored = 0, 0
+    for l in style2F.readlines():
+        l = l.strip()
+
+        # style1 and/or style2 are empty
+        if l == "":
+            print('WARNING: ignoring an empty line (' + str(count + 1) + ')')
+            continue
+
+        words = l.split()
+
+        if len(words) <= max_style2_length:
+
+            # Check truncation condition.
+            if opt.style2_seq_length_trunc != 0:
+                words = words[:opt.style2_seq_length_trunc]
+
+            style2 += [style2Dicts.convertToIdx(words,
+                                                onmt.Constants.UNK_WORD)]
+
+            sizesStyle2 += [len(words)]
+        else:
+            ignored += 1
+
+        count += 1
+
+        if count % opt.report_every == 0:
+            print('... %d sentences prepared' % count)
+
+    style1F.close()
+    style2F.close()
 
     if opt.shuffle == 1:
         print('... shuffling sentences')
-        perm = torch.randperm(len(src))
-        src = [src[idx] for idx in perm]
-        tgt = [tgt[idx] for idx in perm]
-        sizes = [sizes[idx] for idx in perm]
+        perm = torch.randperm(len(style1))
+        style1 = [style1[idx] for idx in perm]
+        style2 = [style2[idx] for idx in perm]
+        sizesStyle1 = [sizesStyle1[idx] for idx in perm]
+        sizesStyle2 = [sizesStyle2[idx] for idx in perm]
 
     print('... sorting sentences by size')
-    _, perm = torch.sort(torch.Tensor(sizes), descending=(opt.sort_type == 'descending'))
-    src = [src[idx] for idx in perm]
-    tgt = [tgt[idx] for idx in perm]
+    _, perm1 = torch.sort(torch.Tensor(sizesStyle1), descending=(opt.sort_type == 'descending'))
+    _, perm2 = torch.sort(torch.Tensor(sizesStyle2), descending=(opt.sort_type == 'descending'))
+    style1 = [style1[idx] for idx in perm1]
+    style2 = [style2[idx] for idx in perm2]
 
-    print(('Prepared %d sentences ' +
-          '(%d ignored due to length == 0 or src len > %d or tgt len > %d)') %
-          (len(src), ignored, max_src_length, max_tgt_length))
+    print(('Prepared %d / %d sentences ' +
+          '(%d ignored due to length == 0 or style1 len > %d or style2 len > %d)') %
+          (len(style1), len(style2), ignored, max_style1_length, max_style2_length))
 
-    return src, tgt
+    return style1, style2
 
 
 def main():
@@ -231,38 +240,38 @@ def main():
     dicts = {}
     
     if opt.join_vocab:
-        dicts['src'] = initVocabulary('source', [opt.train_src, opt.train_tgt], opt.src_vocab,
-                                      opt.src_vocab_size, join=True)
-        dicts['tgt'] = dicts['src']
+        dicts['style1'] = initVocabulary('style1', [opt.train_style1, opt.train_style2], opt.style1_vocab,
+                                      opt.style1_vocab_size, join=True)
+        dicts['style2'] = dicts['style1']
     else:
-        dicts['src'] = initVocabulary('source', opt.train_src, opt.src_vocab,
-                                      opt.src_vocab_size)
+        dicts['style1'] = initVocabulary('style1', opt.train_style1, opt.style1_vocab,
+                                      opt.style1_vocab_size)
 
-        dicts['tgt'] = initVocabulary('target', opt.train_tgt, opt.tgt_vocab,
-                                      opt.tgt_vocab_size)
+        dicts['style2'] = initVocabulary('style2', opt.train_style2, opt.style2_vocab,
+                                      opt.style2_vocab_size)
                                       
     print('Preparing training ...')
     train = {}
-    train['src'], train['tgt'] = makeData(opt.train_src, opt.train_tgt,
-                                          dicts['src'], dicts['tgt'],
-                                          max_src_length=opt.src_seq_length,
-                                          max_tgt_length=opt.tgt_seq_length)
+    train['style1'], train['style2'] = makeData(opt.train_style1, opt.train_style2,
+                                          dicts['style1'], dicts['style2'],
+                                          max_style1_length=opt.style1_seq_length,
+                                          max_style2_length=opt.style2_seq_length)
 
     print('Preparing validation ...')
     valid = {}
-    valid['src'], valid['tgt'] = makeData(opt.valid_src, opt.valid_tgt,
-                                          dicts['src'], dicts['tgt'], 
-                                          max_src_length=max(256,opt.src_seq_length), 
-                                          max_tgt_length=max(256,opt.tgt_seq_length))
+    valid['style1'], valid['style2'] = makeData(opt.valid_style1, opt.valid_style2,
+                                          dicts['style1'], dicts['style2'], 
+                                          max_style1_length=max(256,opt.style1_seq_length), 
+                                          max_style2_length=max(256,opt.style2_seq_length))
 
-    if opt.src_vocab is None:
-        saveVocabulary('source', dicts['src'], opt.save_data + '.src.dict')
-    if opt.tgt_vocab is None:
-        saveVocabulary('target', dicts['tgt'], opt.save_data + '.tgt.dict')
+    if opt.style1_vocab is None:
+        saveVocabulary('style1', dicts['style1'], opt.save_data + '.style1.dict')
+    if opt.style2_vocab is None:
+        saveVocabulary('style2', dicts['style2'], opt.save_data + '.style2.dict')
 
     print('Saving data to \'' + opt.save_data + '.train.pt\'...')
     save_data = {'dicts': dicts,
-                 'type':  opt.src_type,
+                 'type':  opt.style1_type,
                  'train': train,
                  'valid': valid}
     torch.save(save_data, opt.save_data + '.train.pt')

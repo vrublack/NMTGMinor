@@ -38,6 +38,10 @@ def mem_report():
             element_type = type(tensor).__name__
             size = tuple(tensor.size())
 
+            if mem < 1:
+                # ignore because irrelevant
+                continue
+
             print('%s\t\t%s\t\t%.2f' % (
                 element_type,
                 size,

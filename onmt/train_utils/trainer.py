@@ -121,12 +121,13 @@ class XETrainer(BaseTrainer):
         epoch_loss_reconstruction = 0
         epoch_loss_adv1 = 0
         total_words = 0
+        nSamples = len(data)
                 
         batch_order = data.create_order(random=False)
         self.model.eval()
         """ New semantics of PyTorch: save space by not creating gradients """
         with torch.no_grad():
-            for i in range(len(data)):
+            for i in range(nSamples):
                     
                 samples = data.next()
                 
@@ -151,7 +152,7 @@ class XETrainer(BaseTrainer):
                 total_words += targets.data.ne(onmt.Constants.PAD).sum().item()
 
         self.model.train()
-        return epoch_loss / total_words, epoch_loss_reconstruction / total_words, epoch_loss_adv1 / total_words
+        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, epoch_loss_adv1 / nSamples
         
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
         
@@ -183,7 +184,10 @@ class XETrainer(BaseTrainer):
             # trainData.set_index(iteration)
             # print("Resuming from iteration: %d" % iteration)
 
-        total_loss, total_words = 0, 0
+        epoch_loss = 0
+        epoch_loss_reconstruction = 0
+        epoch_loss_adv1 = 0
+        total_words = 0, 0
         report_loss, report_tgt_words = 0, 0
         report_src_words = 0
         start = time.time()
@@ -204,7 +208,6 @@ class XETrainer(BaseTrainer):
             
             oom = False
             try:
-            
                 outputs, classified_repr = self.model(batch)
                     
                 targets = batch[0][1:]
@@ -220,10 +223,15 @@ class XETrainer(BaseTrainer):
                 
                 if self.opt.normalize_gradient:
                     normalizer = tgt_size
-                
-                loss_data, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator, 
-                                                             backward=True, mask=tgt_mask, normalizer=normalizer)
-                
+
+                loss_reconstruction, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator,
+                                                                 backward=True, mask=tgt_mask, normalizer=normalizer)
+
+                targets_style = batch[1]
+
+                loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
+                loss_total = loss_reconstruction + loss_adv1
+
                 #~ outputs.backward(grad_outputs)
                 
             except RuntimeError as e:
@@ -263,13 +271,15 @@ class XETrainer(BaseTrainer):
                         ep = float(epoch) - 1. + ((float(i) + 1.) / nSamples)
                         
                         self.save(ep, valid_ppl, batchOrder=batchOrder, iteration=i)
-                
+
 
                 num_words = tgt_size
-                report_loss += loss_data
+                report_loss += loss_total
                 report_tgt_words += num_words
                 report_src_words += src_size
-                total_loss += loss_data
+                epoch_loss += loss_total
+                epoch_loss_reconstruction += loss_reconstruction
+                epoch_loss_adv1 += loss_adv1
                 total_words += num_words
                 
                 optim = self.optim
@@ -292,7 +302,7 @@ class XETrainer(BaseTrainer):
                     start = time.time()
             
             
-        return total_loss / total_words
+        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, epoch_loss_adv1 / nSamples
     
     
     

@@ -162,8 +162,8 @@ class XETrainer(BaseTrainer):
                 num_accumulated_sents += batch_size
 
         self.model.train()
-        return epoch_loss / total_words, epoch_loss_reconstruction / num_accumulated_sents, \
-               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents
+        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, \
+               epoch_loss_adv1 / nSamples, epoch_loss_adv2 / nSamples
         
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
         
@@ -316,8 +316,8 @@ class XETrainer(BaseTrainer):
                     start = time.time()
             
             
-        return epoch_loss / total_words, epoch_loss_reconstruction / num_accumulated_sents, \
-               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents
+        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, \
+               epoch_loss_adv1 / nSamples, epoch_loss_adv2 / nSamples
     
     
     

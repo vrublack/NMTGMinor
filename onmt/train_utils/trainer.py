@@ -31,7 +31,7 @@ class BaseTrainer(object):
         self.cuda = (len(opt.gpus) >= 1)
         
         self.loss_function = loss_function
-        self.adv1_loss_function = nn.BCELoss()
+        self.adv1_loss_function = nn.BCELoss(reduce=True, size_average=False)
         self.adv2_loss_function = HLoss()
 
         self.start_time = 0
@@ -162,8 +162,8 @@ class XETrainer(BaseTrainer):
                 num_accumulated_sents += batch_size
 
         self.model.train()
-        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, \
-               epoch_loss_adv1 / nSamples, epoch_loss_adv2 / nSamples
+        return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
+               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents
         
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
         
@@ -237,13 +237,14 @@ class XETrainer(BaseTrainer):
                     normalizer = tgt_size
 
                 loss_reconstruction, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator,
-                                                                 backward=True, mask=tgt_mask, normalizer=normalizer)
+                                                                 backward=False, mask=tgt_mask, normalizer=normalizer)
 
                 targets_style = batch[1]
 
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)
                 loss_total = loss_reconstruction + loss_adv1 + loss_adv2
+                loss_total.backward()
 
                 #~ outputs.backward(grad_outputs)
                 
@@ -316,8 +317,8 @@ class XETrainer(BaseTrainer):
                     start = time.time()
             
             
-        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, \
-               epoch_loss_adv1 / nSamples, epoch_loss_adv2 / nSamples
+        return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
+               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents
     
     
     

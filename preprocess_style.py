@@ -216,11 +216,12 @@ def makeData(style1File, style2File, style1Dicts, style2Dicts, max_style1_length
 
     if opt.shuffle == 1:
         print('... shuffling sentences')
-        perm = torch.randperm(len(style1))
-        style1 = [style1[idx] for idx in perm]
-        style2 = [style2[idx] for idx in perm]
-        sizesStyle1 = [sizesStyle1[idx] for idx in perm]
-        sizesStyle2 = [sizesStyle2[idx] for idx in perm]
+        perm1 = torch.randperm(len(style1))
+        perm2 = torch.randperm(len(style2))
+        style1 = [style1[idx] for idx in perm1]
+        style2 = [style2[idx] for idx in perm2]
+        sizesStyle1 = [sizesStyle1[idx] for idx in perm1]
+        sizesStyle2 = [sizesStyle2[idx] for idx in perm2]
 
     print('... sorting sentences by size')
     _, perm1 = torch.sort(torch.Tensor(sizesStyle1), descending=(opt.sort_type == 'descending'))

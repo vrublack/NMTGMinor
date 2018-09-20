@@ -126,7 +126,8 @@ class XETrainer(BaseTrainer):
         epoch_loss_adv2 = 0
         total_words = 0
         nSamples = len(data)
-                
+        num_accumulated_sents = 0
+
         batch_order = data.create_order(random=False)
         self.model.eval()
         """ New semantics of PyTorch: save space by not creating gradients """
@@ -145,6 +146,8 @@ class XETrainer(BaseTrainer):
                 targets = batch[0][1:]
                 targets_style = batch[1]
 
+                batch_size = targets.size(1)
+
                 loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator, backward=False)
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)
@@ -156,9 +159,11 @@ class XETrainer(BaseTrainer):
                 epoch_loss_adv1 += loss_adv1
                 epoch_loss_adv2 += loss_adv2
                 total_words += targets.data.ne(onmt.Constants.PAD).sum().item()
+                num_accumulated_sents += batch_size
 
         self.model.train()
-        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, epoch_loss_adv1 / nSamples, epoch_loss_adv2 / nSamples
+        return epoch_loss / total_words, epoch_loss_reconstruction / num_accumulated_sents, \
+               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents
         
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
         
@@ -311,7 +316,8 @@ class XETrainer(BaseTrainer):
                     start = time.time()
             
             
-        return epoch_loss / total_words, epoch_loss_reconstruction / nSamples, epoch_loss_adv1 / nSamples, epoch_loss_adv2 / nSamples
+        return epoch_loss / total_words, epoch_loss_reconstruction / num_accumulated_sents, \
+               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents
     
     
     

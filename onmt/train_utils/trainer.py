@@ -385,12 +385,8 @@ class XETrainer(BaseTrainer):
             print('Validation perplexity: {}\nReconstruction loss: {}\nAdv1 loss: {}\nAdv2 loss: {}'.format(valid_ppl,
                                                                                                             reconstr,
                                                                                                             adv1, adv2))
-
-
             if epoch % opt.save_every_epoch == 0:
                 self.save(epoch, valid_ppl)
-
-            self.save(epoch, valid_ppl)
             batchOrder = None
             iteration = None
             resume = False

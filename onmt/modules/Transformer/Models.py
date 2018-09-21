@@ -2,7 +2,6 @@ import numpy as np
 import torch, math
 import torch.nn as nn
 
-from mem_report import mem_report
 from onmt.modules.Transformer.Layers import EncoderLayer, DecoderLayer, PositionalEncoding, variational_dropout, PrePostProcessing, Bottleneck
 from onmt.modules.BaseModel import NMTModel, Reconstructor, DecoderState
 import onmt
@@ -447,8 +446,6 @@ class Transformer(NMTModel):
         output, coverage = self.decoder(tgt, inflated_context, src, grow=grow)
         
         output = output.transpose(0, 1) # transpose to have time first, like RNN models
-
-        mem_report()
 
         return output, classified_repr
         

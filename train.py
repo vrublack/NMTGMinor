@@ -180,6 +180,9 @@ parser.add_argument('-log_interval', type=int, default=100,
                     help="Print stats at this interval.")
 parser.add_argument('-save_every', type=int, default=-1,
                     help="Save every this interval.")
+parser.add_argument('-save_every_epoch', type=int, default=-1,
+                    help="Save every this interval in epochs.")
+
 
 opt = parser.parse_args()
 

@@ -350,7 +350,8 @@ class XETrainer(BaseTrainer):
             print('Validation perplexity: %g' % valid_ppl)
             
             
-            self.save(epoch, valid_ppl)
+            if epoch % opt.save_every_epoch == 0:
+                self.save(epoch, valid_ppl)
             batchOrder = None
             iteration = None
             resume = False

@@ -15,6 +15,7 @@ from onmt.train_utils.fp16_trainer import FP16XETrainer
 from onmt.train_utils.multiGPUtrainer import MultiGPUXETrainer
 from onmt.modules.Loss import NMTLossFunc
 from onmt.ModelConstructor import build_model, init_model_parameters
+from tools.git import git_version
 
 parser = argparse.ArgumentParser(description='train.py')
 onmt.Markdown.add_md_help_argument(parser)
@@ -207,8 +208,7 @@ torch.manual_seed(opt.seed)
 
 
 def main():
-    
-    
+    print('Git revision: {}'.format(git_version()))
     
     start = time.time()
     print("Loading data from '%s'" % opt.data)

@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import onmt
 from onmt.modules.Transformer.Models import TransformerEncoder, TransformerDecoder, Transformer
 from onmt.modules.Transformer.Layers import PositionalEncoding
-
+from style.MultiDecoder import MultiDecoder
 
 
 def build_model(opt, dicts):
@@ -60,7 +60,7 @@ def build_model(opt, dicts):
             #~ positional_encoder = nn.LSTM(opt.model_size, opt.model_size, 1, batch_first=True)
         
         encoder = TransformerEncoder(opt, dicts['style1'], positional_encoder)
-        decoder = TransformerDecoder(opt, dicts['style1'], positional_encoder)
+        decoder = MultiDecoder(TransformerDecoder(opt, dicts['style1'], positional_encoder))
         
         generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
         
@@ -182,7 +182,7 @@ def init_model_parameters(model, opt):
         
         init.xavier_uniform_(model.generator.linear.weight)
         init.xavier_uniform_(model.encoder.word_lut.weight.data)
-        init.xavier_uniform_(model.decoder.word_lut.weight.data)
+        init.xavier_uniform_(model.decoder.get_word_lut().weight.data)
         
         #~ init = torch.nn.init.uniform
         #~ 

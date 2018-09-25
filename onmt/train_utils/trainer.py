@@ -286,6 +286,11 @@ class XETrainer(BaseTrainer):
                         
                         self.save(ep, valid_ppl, batchOrder=batchOrder, iteration=i)
 
+                # important: convert to numpy (or set requires_grad to False), otherwise the statistics variables are tensors and contain
+                # the history of the whole epoch, leading to a memory overflow
+                loss_total = loss_total.data.cpu().numpy()
+                loss_adv1 = loss_adv1.data.cpu().numpy()
+                loss_adv2 = loss_adv2.data.cpu().numpy()
 
                 num_words = tgt_size
                 report_loss += loss_total

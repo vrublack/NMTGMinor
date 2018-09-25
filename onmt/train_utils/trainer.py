@@ -128,7 +128,7 @@ class XETrainer(BaseTrainer):
         nSamples = len(data)
         num_accumulated_sents = 0
 
-        batch_order = data.create_order(random=False)
+        batch_order = data.create_order()
         self.model.eval()
         """ New semantics of PyTorch: save space by not creating gradients """
         with torch.no_grad():
@@ -217,7 +217,7 @@ class XETrainer(BaseTrainer):
             curriculum = (epoch < opt.curriculum)
             
             samples = trainData.next(curriculum=curriculum)
-                        
+
             batch = self.to_variable(samples[0])
             
             oom = False
@@ -225,6 +225,12 @@ class XETrainer(BaseTrainer):
                 outputs, classified_repr = self.model(batch)
                     
                 targets = batch[0][1:]
+
+                if int(batch[1][0].cpu().numpy()[0]) == 1:
+                    self.model.decoder.set_active(0)
+                else:
+                    self.model.decoder.set_active(1)
+
 
                 batch_size = targets.size(1)
                 

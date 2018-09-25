@@ -60,7 +60,8 @@ def build_model(opt, dicts):
             #~ positional_encoder = nn.LSTM(opt.model_size, opt.model_size, 1, batch_first=True)
         
         encoder = TransformerEncoder(opt, dicts['style1'], positional_encoder)
-        decoder = MultiDecoder(TransformerDecoder(opt, dicts['style1'], positional_encoder))
+        decoder = MultiDecoder(TransformerDecoder(opt, dicts['style1'], positional_encoder),
+                               TransformerDecoder(opt, dicts['style1'], positional_encoder))
         
         generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
         

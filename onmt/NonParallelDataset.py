@@ -21,6 +21,7 @@ class NonParallelDataset(object):
         style2 = tgtData
 
         concatSrc, targets = self.concat(style1, style2)
+        self.n_style1 = len(style1)
         self.n = len(concatSrc)
 
         self.src = concatSrc
@@ -51,8 +52,6 @@ class NonParallelDataset(object):
         # else:
             # self.numBatches = math.ceil(len(self.src)/batchSize)
 
-        # we want to mix the style labels
-        self.shuffle()
 
     def concat(self, style1, style2):
         return style1 + style2, [[0, 1]] * len(style1) + [[1, 0]] * len(style2)
@@ -60,6 +59,7 @@ class NonParallelDataset(object):
 
     #~ # This function allocates the mini-batches (grouping sentences with the same size)
     def allocateBatch(self):
+        self.numBatches_style1 = 0
 
         # The sentence pairs are sorted by source already (cool)
         self.batches = []
@@ -78,12 +78,15 @@ class NonParallelDataset(object):
             if ( cur_batch_size + sentence_length > self.batchSize ) or len(cur_batch) == self.max_seq_num:
                 oversized = True
             # if the current length makes the batch exceeds
+            # or it is the first one of style2 (don't mix styles!)
             # the we create a new batch
-            if oversized:
+            if oversized or i == self.n_style1:
                 self.batches.append(cur_batch) # add this batch into the batch list
                 cur_batch = [] # reset the current batch
                 cur_batch_size = 0
 
+            if i == self.n_style1:
+                self.numBatches_style1 = len(self.batches)
 
 
             cur_batch.append(i)
@@ -96,6 +99,7 @@ class NonParallelDataset(object):
             self.batches.append(cur_batch)
 
         self.numBatches = len(self.batches)
+        self.numBatches_style2 = self.numBatches - self.numBatches_style1
 
     def _batchify(self, data, align_right=False,
                   include_lengths=False, dtype="text"):
@@ -147,12 +151,18 @@ class NonParallelDataset(object):
     def __len__(self):
         return self.numBatches
 
-    def create_order(self, random=True):
+    def create_order(self):
+        self.batchOrder = torch.arange(self.numBatches).long()
+        # alternate between style1 and style2
+        count = 0
+        for i in range(max(self.numBatches_style1, self.numBatches_style2)):
+            if i < self.numBatches_style1:
+                self.batchOrder[count] = i
+                count += 1
+            if i < self.numBatches_style2:
+                self.batchOrder[count] = i + self.numBatches_style1
+                count += 1
 
-        if random:
-            self.batchOrder = torch.randperm(self.numBatches)
-        else:
-            self.batchOrder = torch.arange(self.numBatches).long()
         self.cur_index = 0
 
         return self.batchOrder
@@ -197,11 +207,6 @@ class NonParallelDataset(object):
 
         return batch_split
 
-
-    def shuffle(self):
-        data = list(zip(self.src, self.tgt))
-        self.src, self.tgt = zip(*[data[i] for i in torch.randperm(len(data))])
-        print('dataset shuffled')
 
     def set_index(self, iteration):
 

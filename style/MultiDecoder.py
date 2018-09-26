@@ -6,10 +6,10 @@ class MultiDecoder(nn.Module):
     Wrapper for multiple decoders
     """
 
-    def __init__(self, *decoders):
+    def __init__(self, decoders):
         super(MultiDecoder, self).__init__()
         self.n = len(decoders)
-        self.decoders = decoders
+        self.decoders = nn.ModuleList(decoders)
         self.active_decoder = 0
 
     def set_active(self, i):

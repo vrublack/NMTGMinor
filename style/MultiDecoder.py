@@ -34,4 +34,4 @@ class MultiDecoder(nn.Module):
         return self.decoders[self.active_decoder].step(input, decoder_state)
 
     def get_word_lut(self):
-        return self.decoders[self.active_decoder].word_lut
+        return [self.decoders[i].word_lut for i in range(self.n)]

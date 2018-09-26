@@ -46,12 +46,11 @@ class NMTModel(nn.Module):
         self.generator = generator        
         
     def tie_weights(self):
-        assert self.generator is not None, "The generator needs to be created before sharing weights"
-        self.generator.linear.weight = self.decoder.get_word_lut().weight
+        raise NotImplementedError('Not possible for multidecoder')
         
     
     def share_enc_dec_embedding(self):
-        self.encoder.word_lut.weight = self.decoder.get_word_lut().weight
+        raise NotImplementedError('Not possible for multidecoder')
         
     def mark_pretrained(self):
         

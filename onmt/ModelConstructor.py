@@ -183,7 +183,8 @@ def init_model_parameters(model, opt):
         
         init.xavier_uniform_(model.generator.linear.weight)
         init.xavier_uniform_(model.encoder.word_lut.weight.data)
-        init.xavier_uniform_(model.decoder.get_word_lut().weight.data)
+        for lut in model.decoder.get_word_lut():
+            init.xavier_uniform_(lut.weight.data)
         
         #~ init = torch.nn.init.uniform
         #~ 

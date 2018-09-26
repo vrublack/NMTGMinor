@@ -142,6 +142,12 @@ class XETrainer(BaseTrainer):
                         hidden states from decoder or
                         prob distribution from decoder generator
                 """
+
+                if int(batch[1][0].cpu().numpy()[0]) == 1:
+                    self.model.decoder.set_active(0)
+                else:
+                    self.model.decoder.set_active(1)
+
                 outputs, classified_repr = self.model(batch)
                 targets = batch[0][1:]
                 targets_style = batch[1]
@@ -156,6 +162,8 @@ class XETrainer(BaseTrainer):
                 loss_total = loss_total.data.cpu().numpy()
                 loss_adv1 = loss_adv1.data.cpu().numpy()
                 loss_adv2 = loss_adv2.data.cpu().numpy()
+                loss_reconstruction = loss_reconstruction.data.cpu().numpy()
+
                 epoch_loss += loss_total
                 epoch_loss_reconstruction += loss_reconstruction
                 epoch_loss_adv1 += loss_adv1
@@ -299,6 +307,7 @@ class XETrainer(BaseTrainer):
                 loss_total = loss_total.data.cpu().numpy()
                 loss_adv1 = loss_adv1.data.cpu().numpy()
                 loss_adv2 = loss_adv2.data.cpu().numpy()
+                loss_reconstruction = loss_reconstruction.data.cpu().numpy()
 
                 num_words = tgt_size
                 report_loss += loss_total

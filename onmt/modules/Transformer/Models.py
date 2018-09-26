@@ -156,9 +156,9 @@ class TransformerEncoder(nn.Module):
         # a whole stack of unnormalized layer outputs.    
         context = self.postprocess_layer(context)
 
-        inflated_context, context = self.bottleneck_layer(context)
+        context = self.bottleneck_layer(context)
 
-        return inflated_context, mask_src, context
+        return mask_src, context
         
 
 class TransformerDecoder(nn.Module):
@@ -439,11 +439,11 @@ class Transformer(NMTModel):
         src = src.transpose(0, 1) # transpose to have batch first
         tgt = tgt.transpose(0, 1)
 
-        inflated_context, src_mask, context = self.encoder(src, grow=grow)
+        src_mask, context = self.encoder(src, grow=grow)
 
         classified_repr = self.repr_classifier(context)
 
-        output, coverage = self.decoder(tgt, inflated_context, src, grow=grow)
+        output, coverage = self.decoder(tgt, context, src[:,:1], grow=grow)
         
         output = output.transpose(0, 1) # transpose to have time first, like RNN models
 

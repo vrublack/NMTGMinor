@@ -38,8 +38,8 @@ class EnsembleTranslator(object):
             model_opt = checkpoint['opt']
             
             if i == 0:
-                self.src_dict = checkpoint['dicts']['src']
-                self.tgt_dict = checkpoint['dicts']['tgt']
+                self.src_dict = checkpoint['dicts']['style1']
+                self.tgt_dict = checkpoint['dicts']['style1']
             
             # Build model from the saved option
             model = build_model(model_opt, checkpoint['dicts'])
@@ -47,9 +47,7 @@ class EnsembleTranslator(object):
             model.load_state_dict(checkpoint['model'])
             
             if model_opt.model in model_list:
-                if model.decoder.positional_encoder.len_max < self.opt.max_sent_length:
-                    print("Not enough len to decode. Renewing .. ")    
-                    model.decoder.renew_buffer(self.opt.max_sent_length)
+                model.decoder.check_renew_buffer(self.opt.max_sent_length)
             
             if opt.cuda:
                 model = model.cuda()
@@ -57,6 +55,8 @@ class EnsembleTranslator(object):
                 model = model.cpu()
             
             model.eval()
+
+            model.decoder.set_active(opt.target_style - 1)
             
             self.models.append(model)
             self.model_types.append(model_opt.model)

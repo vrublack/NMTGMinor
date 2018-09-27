@@ -59,6 +59,8 @@ parser.add_argument('-normalize', action='store_true',
                     help='To normalize the scores based on output length')
 parser.add_argument('-gpu', type=int, default=-1,
                     help="Device to run on")
+parser.add_argument('-target_style', type=int, default=1,
+                    help="Which style decoder should be used")
 
 
 def reportScore(name, scoreTotal, wordsTotal):

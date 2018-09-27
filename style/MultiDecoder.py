@@ -34,3 +34,9 @@ class MultiDecoder(nn.Module):
 
     def get_word_lut(self):
         return [self.decoders[i].word_lut for i in range(self.n)]
+
+    def check_renew_buffer(self, max_sent_length):
+        for decoder in self.decoders:
+            if decoder.positional_encoder.len_max < max_sent_length:
+                print("Not enough len to decode. Renewing .. ")
+                decoder.renew_buffer(max_sent_length)

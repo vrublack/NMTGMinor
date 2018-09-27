@@ -11,6 +11,8 @@ from torch.utils.checkpoint import checkpoint
 from torch.autograd import Variable
 from style.Classifier import RepresentationClassifier
 
+from style.MultiDecoder import MultiDecoder
+
 
 def custom_layer(module):
     def custom_forward(*args):
@@ -158,7 +160,7 @@ class TransformerEncoder(nn.Module):
 
         context = self.bottleneck_layer(context)
 
-        return mask_src, context
+        return context, mask_src
         
 
 class TransformerDecoder(nn.Module):
@@ -439,7 +441,7 @@ class Transformer(NMTModel):
         src = src.transpose(0, 1) # transpose to have batch first
         tgt = tgt.transpose(0, 1)
 
-        src_mask, context = self.encoder(src, grow=grow)
+        context, src_mask = self.encoder(src, grow=grow)
 
         classified_repr = self.repr_classifier(context)
 
@@ -455,11 +457,12 @@ class Transformer(NMTModel):
         from onmt.modules.StochasticTransformer.Models import StochasticTransformerEncoder, StochasticTransformerDecoder
         from onmt.modules.UniversalTransformer.Models import UniversalTransformerDecoder
         
-        if isinstance(self.decoder, TransformerDecoder) or isinstance(self.decoder, StochasticTransformerDecoder) or isinstance(self.decoder, UniversalTransformerDecoder) :
-            decoder_state = TransformerDecodingState(src, context, beamSize=beamSize)
+        if isinstance(self.decoder, TransformerDecoder) or isinstance(self.decoder, StochasticTransformerDecoder) \
+                or isinstance(self.decoder, UniversalTransformerDecoder) or isinstance(self.decoder, MultiDecoder):
+            decoder_state = TransformerDecodingState(src[:1,:], context, beamSize=beamSize)
         elif isinstance(self.decoder, ParallelTransformerDecoder):
             from onmt.modules.ParallelTransformer.Models import ParallelTransformerDecodingState
-            decoder_state = ParallelTransformerDecodingState(src, context, beamSize=beamSize)
+            decoder_state = ParallelTransformerDecodingState(src[:1,:], context, beamSize=beamSize)
         return decoder_state
 
 

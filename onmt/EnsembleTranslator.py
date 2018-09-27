@@ -328,7 +328,7 @@ class EnsembleTranslator(object):
             hyps, attn, length = zip(*[beam[b].getHyp(k) for k in ks[:n_best]])
             allHyp += [hyps]
             allLengths += [length]
-            valid_attn = srcBatch.data[:, b].ne(onmt.Constants.PAD) \
+            valid_attn = srcBatch.data[:1, b].ne(onmt.Constants.PAD) \
                                             .nonzero().squeeze(1)
             attn = [a.index_select(1, valid_attn) for a in attn]
             allAttn += [attn]

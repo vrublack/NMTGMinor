@@ -12,6 +12,7 @@ class RepresentationClassifier(nn.Module):
         self.fc2 = nn.Linear(hidden_dim, classes)
 
     def forward(self, x):
+        # B x T x D
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         x = x.squeeze(1)

@@ -185,6 +185,9 @@ parser.add_argument('-save_every', type=int, default=-1,
 parser.add_argument('-save_every_epoch', type=int, default=-1,
                     help="Save every this interval in epochs.")
 
+parser.add_argument('-bottleneck', action='store_true',
+                    help='Use a bottleneck after the encoder')
+
 
 opt = parser.parse_args()
 

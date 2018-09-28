@@ -61,7 +61,10 @@ class TransformerEncoder(nn.Module):
         
         self.postprocess_layer = PrePostProcessing(self.model_size, 0, sequence='n')
 
-        self.bottleneck_layer = Bottleneck(self.model_size)
+        if opt.bottleneck:
+            self.bottleneck_layer = Bottleneck(self.model_size)
+        else:
+            self.bottleneck_layer = None
 
         self.positional_encoder = positional_encoder
         
@@ -158,7 +161,8 @@ class TransformerEncoder(nn.Module):
         # a whole stack of unnormalized layer outputs.    
         context = self.postprocess_layer(context)
 
-        context = self.bottleneck_layer(context)
+        if self.bottleneck_layer is not None:
+            context = self.bottleneck_layer(context)
 
         return context, mask_src
         
@@ -445,7 +449,10 @@ class Transformer(NMTModel):
 
         classified_repr = self.repr_classifier(context)
 
-        output, coverage = self.decoder(tgt, context, src[:,:1], grow=grow)
+        if self.encoder.bottleneck_layer is not None:
+            src = src[:, :1]
+
+        output, coverage = self.decoder(tgt, context, src, grow=grow)
         
         output = output.transpose(0, 1) # transpose to have time first, like RNN models
 
@@ -456,13 +463,16 @@ class Transformer(NMTModel):
         from onmt.modules.ParallelTransformer.Models import ParallelTransformerEncoder, ParallelTransformerDecoder
         from onmt.modules.StochasticTransformer.Models import StochasticTransformerEncoder, StochasticTransformerDecoder
         from onmt.modules.UniversalTransformer.Models import UniversalTransformerDecoder
+
+        if self.encoder.bottleneck_layer is not None:
+            src = src[:, :1]
         
         if isinstance(self.decoder, TransformerDecoder) or isinstance(self.decoder, StochasticTransformerDecoder) \
                 or isinstance(self.decoder, UniversalTransformerDecoder) or isinstance(self.decoder, MultiDecoder):
-            decoder_state = TransformerDecodingState(src[:1,:], context, beamSize=beamSize)
+            decoder_state = TransformerDecodingState(src, context, beamSize=beamSize)
         elif isinstance(self.decoder, ParallelTransformerDecoder):
             from onmt.modules.ParallelTransformer.Models import ParallelTransformerDecodingState
-            decoder_state = ParallelTransformerDecodingState(src[:1,:], context, beamSize=beamSize)
+            decoder_state = ParallelTransformerDecodingState(src, context, beamSize=beamSize)
         return decoder_state
 
 

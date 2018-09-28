@@ -422,10 +422,10 @@ class TransformerDecoder(nn.Module):
 class Transformer(NMTModel):
     """Main model in 'Attention is all you need' """
 
-    def __init__(self, encoder, decoder, generator=None):
+    def __init__(self, opt, encoder, decoder, generator=None):
         super(Transformer, self).__init__(encoder, decoder, generator)
 
-        self.repr_classifier = RepresentationClassifier(encoder.model_size, encoder.model_size // 2)
+        self.repr_classifier = RepresentationClassifier(opt, encoder.model_size, encoder.model_size // 2)
 
 
     def forward(self, input, grow=False):

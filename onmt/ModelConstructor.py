@@ -65,7 +65,7 @@ def build_model(opt, dicts):
         
         generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
         
-        model = Transformer(encoder, decoder, generator)    
+        model = Transformer(opt, encoder, decoder, generator)
         
         #~ print(encoder)
         

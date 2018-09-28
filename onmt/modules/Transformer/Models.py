@@ -465,7 +465,7 @@ class Transformer(NMTModel):
         from onmt.modules.UniversalTransformer.Models import UniversalTransformerDecoder
 
         if self.encoder.bottleneck_layer is not None:
-            src = src[:, :1]
+            src = src[:1, :]
         
         if isinstance(self.decoder, TransformerDecoder) or isinstance(self.decoder, StochasticTransformerDecoder) \
                 or isinstance(self.decoder, UniversalTransformerDecoder) or isinstance(self.decoder, MultiDecoder):

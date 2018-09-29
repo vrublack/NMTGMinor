@@ -256,7 +256,7 @@ class XETrainer(BaseTrainer):
 
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)
-                loss_total = loss_reconstruction + loss_adv1 - loss_adv2
+                loss_total = loss_reconstruction
                 loss_total.backward()
 
                 # ~ outputs.backward(grad_outputs)

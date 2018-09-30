@@ -108,6 +108,6 @@ done
 
 
 cd $current_dir
-python3 preprocess_style.py -join_vocab -train_style1 ${data_dir}/${name}/train/train.0 -train_style2 ${data_dir}/${name}/train/train.1 -valid_style1 ${data_dir}/${name}/valid/valid.0 -valid_style2 ${data_dir}/${name}/valid/valid.0 -save_data ${data_dir}/${name}/model_prepr
+python3 preprocess_style.py -train_style1 ${data_dir}/${name}/train/train.0 -train_style2 ${data_dir}/${name}/train/train.1 -valid_style1 ${data_dir}/${name}/valid/valid.0 -valid_style2 ${data_dir}/${name}/valid/valid.0 -save_data ${data_dir}/${name}/model_prepr
 
 rm -r ${data_dir}/tmp/${name}/

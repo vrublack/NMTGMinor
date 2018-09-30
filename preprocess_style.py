@@ -63,7 +63,6 @@ parser.add_argument('-seed',       type=int, default=3435,
                     help="Random seed")
 
 parser.add_argument('-lower', action='store_true', help='lowercase data')
-parser.add_argument('-join_vocab', action='store_true', help='Using one dictionary for both style1 and style2')
 
 parser.add_argument('-report_every', type=int, default=100000,
                     help="Report status every this many sentences")
@@ -240,17 +239,10 @@ def main():
 
     dicts = {}
     
-    if opt.join_vocab:
-        dicts['style1'] = initVocabulary('style1', [opt.train_style1, opt.train_style2], opt.style1_vocab,
-                                      opt.style1_vocab_size, join=True)
-        dicts['style2'] = dicts['style1']
-    else:
-        dicts['style1'] = initVocabulary('style1', opt.train_style1, opt.style1_vocab,
-                                      opt.style1_vocab_size)
+    dicts['style1'] = initVocabulary('style1', [opt.train_style1, opt.train_style2], opt.style1_vocab,
+                                  opt.style1_vocab_size, join=True)
+    dicts['style2'] = dicts['style1']
 
-        dicts['style2'] = initVocabulary('style2', opt.train_style2, opt.style2_vocab,
-                                      opt.style2_vocab_size)
-                                      
     print('Preparing training ...')
     train = {}
     train['style1'], train['style2'] = makeData(opt.train_style1, opt.train_style2,

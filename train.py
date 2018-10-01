@@ -29,7 +29,7 @@ parser.add_argument('-save_model', default='model',
                     help="""Model filename (the model will be saved as
                     <save_model>_epochN_PPL.pt where PPL is the
                     validation perplexity""")
-parser.add_argument('-load_from', default='', type=str,
+parser.add_argument('-load_from', default='', type=str, required=True,
                     help="""If training from a checkpoint then this is the
                     path to the pretrained model.""")
 parser.add_argument('-model', default='recurrent',

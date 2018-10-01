@@ -475,6 +475,14 @@ class Transformer(NMTModel):
             decoder_state = ParallelTransformerDecodingState(src, context, beamSize=beamSize)
         return decoder_state
 
+    def set_trainable(self, encoder, decoder, classifier):
+        for p in self.encoder.parameters():
+            p.requires_grad = encoder
+        for p in self.decoder.parameters():
+            p.requires_grad = decoder
+        for p in self.repr_classifier.parameters():
+            p.requires_grad = classifier
+
 
 class TransformerDecodingState(DecoderState):
     

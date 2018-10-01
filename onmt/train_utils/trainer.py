@@ -215,6 +215,7 @@ class XETrainer(BaseTrainer):
         dataset = self.dataset
 
         num_accumulated_sents = 0
+        num_total_sents = 0
 
         for i in range(iteration, nSamples):
 
@@ -284,6 +285,7 @@ class XETrainer(BaseTrainer):
 
             if not oom:
                 num_accumulated_sents += batch_size
+                num_total_sents += batch_size
 
                 src_size = batch[0].data.ne(onmt.Constants.PAD).sum().item()
                 tgt_size = targets.data.ne(onmt.Constants.PAD).sum().item()
@@ -322,7 +324,7 @@ class XETrainer(BaseTrainer):
                     start = time.time()
 
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
-               epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
+               epoch_loss_adv / num_total_sents, correct / num_total_sents
 
     def run(self, save_file=None):
 

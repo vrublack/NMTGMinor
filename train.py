@@ -91,8 +91,6 @@ parser.add_argument('-max_generator_batches', type=int, default=32,
                     help="""Maximum batches of words in a sequence to run
                     the generator on in parallel. Higher is faster, but uses
                     more memory.""")
-parser.add_argument('-batch_size_update', type=int, default=2048,
-                    help='Maximum number of words per update')                    
 
 parser.add_argument('-epochs', type=int, default=13,
                     help='Number of training epochs')
@@ -180,8 +178,6 @@ parser.add_argument('-seed', default=9999, type=int,
 
 parser.add_argument('-log_interval', type=int, default=100,
                     help="Print stats at this interval.")
-parser.add_argument('-save_every', type=int, default=-1,
-                    help="Save every this interval.")
 parser.add_argument('-save_every_epoch', type=int, default=-1,
                     help="Save every this interval in epochs.")
 

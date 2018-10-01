@@ -214,8 +214,6 @@ class XETrainer(BaseTrainer):
         nSamples = len(trainData)
         dataset = self.dataset
 
-        counter = 0
-        num_accumulated_words = 0
         num_accumulated_sents = 0
 
         for i in range(iteration, nSamples):
@@ -227,38 +225,54 @@ class XETrainer(BaseTrainer):
             batch = self.to_variable(samples[0])
 
             oom = False
+
+            if int(batch[1][0].cpu().numpy()[0]) == 1:
+                self.model.decoder.set_active(0)
+            else:
+                self.model.decoder.set_active(1)
+
+            targets = batch[0][1:]
+            targets_style = batch[1]
+
+            batch_size = targets.size(1)
+
             try:
-                outputs, classified_repr = self.model(batch)
+                def train_part(total_loss_f):
+                    outputs, classified_repr = self.model(batch)
 
-                targets = batch[0][1:]
+                    tgt_mask = targets.data.ne(onmt.Constants.PAD)
+                    tgt_size = tgt_mask.sum()
 
-                if int(batch[1][0].cpu().numpy()[0]) == 1:
-                    self.model.decoder.set_active(0)
-                else:
-                    self.model.decoder.set_active(1)
+                    tgt_mask = torch.autograd.Variable(tgt_mask)
+                    # ~ tgt_mask = None
+                    normalizer = 1
 
-                batch_size = targets.size(1)
+                    if self.opt.normalize_gradient:
+                        normalizer = tgt_size
 
-                tgt_mask = targets.data.ne(onmt.Constants.PAD)
-                tgt_size = tgt_mask.sum()
+                    loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator,
+                                                                           backward=False, mask=tgt_mask,
+                                                                           normalizer=normalizer)
 
-                tgt_mask = torch.autograd.Variable(tgt_mask)
-                # ~ tgt_mask = None
-                normalizer = 1
+                    loss_adv = self.adv_loss_function(classified_repr, targets_style)
+                    loss_total = total_loss_f(loss_reconstruction, loss_adv)
+                    loss_total.backward()
 
-                if self.opt.normalize_gradient:
-                    normalizer = tgt_size
+                    # update parameters immediately
+                    self.optim.step(grad_denom=1)
+                    self.model.zero_grad()
 
-                loss_reconstruction, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator,
-                                                                       backward=False, mask=tgt_mask,
-                                                                       normalizer=normalizer)
-                targets_style = batch[1]
+                    return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                loss_adv = self.adv_loss_function(classified_repr, targets_style)
-                loss_total = loss_reconstruction - loss_adv
-                loss_total.backward()
+                # train discriminator
+                _ = train_part(lambda loss_reconstr, loss_class : loss_class)
 
-                # ~ outputs.backward(grad_outputs)
+                # TODO set only the corresponding weights to trainable
+
+                # train generator
+                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : loss_reconstr - loss_class)
+
+
 
             except RuntimeError as e:
                 if 'out of memory' in str(e):
@@ -269,38 +283,10 @@ class XETrainer(BaseTrainer):
                     raise e
 
             if not oom:
-                src_size = batch[0].data.ne(onmt.Constants.PAD).sum().item()
-                tgt_size = targets.data.ne(onmt.Constants.PAD).sum().item()
-
-                counter = counter + 1
-                num_accumulated_words += tgt_size
                 num_accumulated_sents += batch_size
 
-                # We only update the parameters after getting gradients from n mini-batches
-                # simulating the multi-gpu situation
-                # ~ if counter == opt.virtual_gpu:
-                # ~ if counter >= opt.batch_size_update:
-                if num_accumulated_words >= opt.batch_size_update * 0.95:
-                    # Update the parameters.
-                    self.optim.step(grad_denom=1)
-                    self.model.zero_grad()
-                    counter = 0
-                    num_accumulated_words = 0
-                    num_accumulated_sents = 0
-                    num_updates = self.optim._step
-                    if opt.save_every > 0 and num_updates % opt.save_every == -1 % opt.save_every:
-                        valid_loss, reconstr, adv, adv_accuracy = self.eval(self.validData)
-                        reconstr_ppl = math.exp(min(reconstr, 100))
-                        print(
-                            '{}\nValid loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}\n{}\n'.format(
-                                separator,
-                                valid_loss,
-                                reconstr_ppl,
-                                adv, adv_accuracy,
-                                separator))
-                        ep = float(epoch) - 1. + ((float(i) + 1.) / nSamples)
-
-                        self.save(ep, reconstr_ppl, batchOrder=batchOrder, iteration=i)
+                src_size = batch[0].data.ne(onmt.Constants.PAD).sum().item()
+                tgt_size = targets.data.ne(onmt.Constants.PAD).sum().item()
 
                 # important: convert to numpy (or set requires_grad to False), otherwise the statistics variables are tensors and contain
                 # the history of the whole epoch, leading to a memory overflow

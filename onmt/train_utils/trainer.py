@@ -220,6 +220,7 @@ class XETrainer(BaseTrainer):
         counter = 0
         num_accumulated_words = 0
         num_accumulated_sents = 0
+        num_total_sents = 0
 
         for i in range(iteration, nSamples):
 
@@ -279,6 +280,7 @@ class XETrainer(BaseTrainer):
                 counter = counter + 1
                 num_accumulated_words += tgt_size
                 num_accumulated_sents += batch_size
+                num_total_sents += batch_size
 
                 # We only update the parameters after getting gradients from n mini-batches
                 # simulating the multi-gpu situation
@@ -337,7 +339,7 @@ class XETrainer(BaseTrainer):
                     start = time.time()
 
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
-               epoch_loss_adv1 / num_accumulated_sents, epoch_loss_adv2 / num_accumulated_sents, correct / num_accumulated_sents
+               epoch_loss_adv1 / num_total_sents, epoch_loss_adv2 / num_total_sents, correct / num_total_sents
 
     def run(self, save_file=None):
 

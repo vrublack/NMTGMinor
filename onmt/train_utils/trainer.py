@@ -394,6 +394,9 @@ class XETrainer(BaseTrainer):
         best_train_loss = (None, None, None, None)
         best_val_loss = (None, None, None, None)
 
+        # only classifier should be trained
+        model.set_trainable(False, False, True)
+
         for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
             print('')
 

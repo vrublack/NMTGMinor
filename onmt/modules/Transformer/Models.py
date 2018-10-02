@@ -440,7 +440,7 @@ class Transformer(NMTModel):
             
         """
         src = input[0]
-        tgt = input[0][:-1]  # exclude last target from inputs
+        tgt = input[1][:-1]  # exclude last target from inputs
 
         src = src.transpose(0, 1) # transpose to have batch first
         tgt = tgt.transpose(0, 1)

@@ -266,11 +266,11 @@ class XETrainer(BaseTrainer):
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
                 # train discriminator
+                self.model.set_trainable(False, False, True)
                 _ = train_part(lambda loss_reconstr, loss_class : loss_class)
 
-                # TODO set only the corresponding weights to trainable
-
                 # train generator
+                self.model.set_trainable(True, True, False)
                 loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : loss_reconstr - loss_class)
 
 

@@ -2,7 +2,7 @@ from __future__ import division
 
 import math
 import torch
-from torch import Tensor
+from torch import tensor, Tensor
 from torch.autograd import Variable
 
 import onmt
@@ -13,9 +13,10 @@ class NonParallelDataset(object):
     '''
     batchSize is now changed to have word semantic (probably better)
     '''
-    def __init__(self, srcData, tgtData, batchSize, gpus,
+    def __init__(self, srcData, tgtData, dict, batchSize, gpus,
                  volatile=False, data_type="text", balance=False, max_seq_num=128,
                  multiplier=8, pad_count=True):
+        self.dict = dict
 
         style1 = srcData
         style2 = tgtData
@@ -26,11 +27,8 @@ class NonParallelDataset(object):
 
         self.src = concatSrc
         self._type = data_type
-        if tgtData:
-            self.tgt = targets
-            assert(len(self.src) == len(self.tgt))
-        else:
-            self.tgt = None
+        self.tgt = targets
+        assert(len(self.src) == len(self.tgt))
         self.cuda = (len(gpus) > 0)
         self.fullSize = len(self.src)
         self.n_gpu = len(gpus)
@@ -115,7 +113,12 @@ class NonParallelDataset(object):
         else:
             return out
 
-
+    def to_target(self, src):
+        # prepend start of sentence token and append end of sentence token
+        batch_size = src.shape[0]
+        sos = tensor([self.dict.labelToIdx['<s>']]).repeat(batch_size).unsqueeze(dim=1)
+        eos = tensor([self.dict.labelToIdx['</s>']]).repeat(batch_size).unsqueeze(dim=1)
+        return torch.cat((sos, src, eos), dim=1)
 
     def __getitem__(self, index):
         assert index < self.numBatches, "%d > %d" % (index, self.numBatches)
@@ -141,11 +144,11 @@ class NonParallelDataset(object):
 
             return b
 
-        srcTensor = wrap(srcBatch, self._type)
-        tgtTensor = Tensor(tgtBatch)
+        srctensor = wrap(srcBatch, self._type)
+        tgtSeqtensor = wrap(self.to_target(srcBatch), self._type)
+        tgttensor = Tensor(tgtBatch)
 
-
-        return [srcTensor, tgtTensor]
+        return [srctensor, tgtSeqtensor, tgttensor]
 
 
     def __len__(self):
@@ -193,17 +196,11 @@ class NonParallelDataset(object):
         split_size = int(math.ceil(batch[0].size(1) / split))
         # maybe we need a more smart splitting function ?
 
-        if batch[1] is not None:
-            batch_split = zip(batch[0].split(split_size, dim=1),
-                              batch[1].split(split_size, dim=0))
+        batch_split = zip(batch[0].split(split_size, dim=1),
+                          batch[1].split(split_size, dim=1),
+                          batch[2].split(split_size, dim=0))
 
-
-            batch_split = [ [b[0], b[1]] for i, b in enumerate(batch_split) ]
-        else:
-            batch_split = zip(batch[0].split(split_size, dim=1))
-
-
-            batch_split = [ [b[0], None] for i, b in enumerate(batch_split) ]
+        batch_split = [ [b[0], b[1], b[2]] for i, b in enumerate(batch_split) ]
 
         return batch_split
 

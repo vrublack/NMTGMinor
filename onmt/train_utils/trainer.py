@@ -140,14 +140,14 @@ class XETrainer(BaseTrainer):
                         prob distribution from decoder generator
                 """
 
-                if int(batch[1][0].cpu().numpy()[0]) == 1:
+                if int(batch[2][0].cpu().numpy()[0]) == 1:
                     self.model.decoder.set_active(0)
                 else:
                     self.model.decoder.set_active(1)
 
                 outputs, classified_repr = self.model(batch)
-                targets = batch[0][1:]
-                targets_style = batch[1]
+                targets = batch[1][1:]
+                targets_style = batch[2]
 
                 batch_size = targets.size(1)
 
@@ -230,7 +230,7 @@ class XETrainer(BaseTrainer):
 
             batch = self.to_variable(samples[0])
 
-            if int(batch[1][0].cpu().numpy()[0]) == 1:
+            if int(batch[2][0].cpu().numpy()[0]) == 1:
                 self.model.decoder.set_active(0)
             else:
                 self.model.decoder.set_active(1)
@@ -239,7 +239,7 @@ class XETrainer(BaseTrainer):
             try:
                 outputs, classified_repr = self.model(batch)
 
-                targets = batch[0][1:]
+                targets = batch[1][1:]
 
                 batch_size = targets.size(1)
 
@@ -256,7 +256,7 @@ class XETrainer(BaseTrainer):
                 loss_reconstruction, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator,
                                                                        backward=False, mask=tgt_mask,
                                                                        normalizer=normalizer)
-                targets_style = batch[1]
+                targets_style = batch[2]
 
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)

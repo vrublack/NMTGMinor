@@ -1,6 +1,8 @@
 from __future__ import division
 
 import math
+import random
+
 import torch
 from torch import Tensor
 from torch.autograd import Variable
@@ -21,6 +23,7 @@ class NonParallelDataset(object):
         style2 = tgtData
 
         concatSrc, targets = self.concat(style1, style2)
+        self.scramble(concatSrc)
         self.n_style1 = len(style1)
         self.n = len(concatSrc)
 
@@ -51,6 +54,12 @@ class NonParallelDataset(object):
         self.batchOrder = None
         # else:
             # self.numBatches = math.ceil(len(self.src)/batchSize)
+
+    def scramble(self, src):
+        print('WARNING: scrambling input data, only for debugging purposes!')
+        for i in range(len(src)):
+            for j in range(src[i].shape[0]):
+                src[i][j] = random.randint(0, 99)
 
 
     def concat(self, style1, style2):

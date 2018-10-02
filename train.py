@@ -226,10 +226,10 @@ def main():
     
 
     trainData = NonParallelDataset(dataset['train']['style1'],
-                             dataset['train']['style2'], opt.batch_size_words, opt.gpus,
+                             dataset['train']['style2'], dataset['dicts']['style1'], opt.batch_size_words, opt.gpus,
                              data_type=dataset.get("type", "text"), max_seq_num=opt.batch_size_sents)
     validData = NonParallelDataset(dataset['valid']['style1'],
-                             dataset['valid']['style2'], opt.batch_size_words, opt.gpus,
+                             dataset['valid']['style2'], dataset['dicts']['style1'], opt.batch_size_words, opt.gpus,
                              volatile=True,
                              data_type=dataset.get("type", "text"), max_seq_num=opt.batch_size_sents)
 

@@ -114,11 +114,13 @@ class NonParallelDataset(object):
             return out
 
     def to_target(self, src):
-        # prepend start of sentence token and append end of sentence token
-        batch_size = src.shape[0]
-        sos = tensor([self.dict.labelToIdx['<s>']]).repeat(batch_size).unsqueeze(dim=1)
-        eos = tensor([self.dict.labelToIdx['</s>']]).repeat(batch_size).unsqueeze(dim=1)
-        return torch.cat((sos, src, eos), dim=1)
+        target = []
+        for sent in src:
+            sos = tensor([self.dict.labelToIdx['<s>']])
+            eos = tensor([self.dict.labelToIdx['</s>']])
+            target.append(torch.cat((sos, sent, eos)))
+
+        return target
 
     def __getitem__(self, index):
         assert index < self.numBatches, "%d > %d" % (index, self.numBatches)
@@ -128,6 +130,12 @@ class NonParallelDataset(object):
         srcBatch, lengths = self._batchify(
             srcData,
             align_right=False, include_lengths=True, dtype=self._type)
+
+        tgtSeqData = self.to_target(srcData)
+        tgtSeqBatch, _ = self._batchify(
+            tgtSeqData,
+            align_right=False, include_lengths=True, dtype=self._type)
+
 
         if self.tgt:
             tgtBatch = [self.tgt[i] for i in batch]
@@ -145,7 +153,7 @@ class NonParallelDataset(object):
             return b
 
         srctensor = wrap(srcBatch, self._type)
-        tgtSeqtensor = wrap(self.to_target(srcBatch), self._type)
+        tgtSeqtensor = wrap(tgtSeqBatch, self._type)
         tgttensor = Tensor(tgtBatch)
 
         return [srctensor, tgtSeqtensor, tgttensor]

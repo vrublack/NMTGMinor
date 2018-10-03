@@ -139,11 +139,6 @@ class XETrainer(BaseTrainer):
                         prob distribution from decoder generator
                 """
 
-                if int(batch[2][0].cpu().numpy()[0]) == 1:
-                    self.model.decoder.set_active(0)
-                else:
-                    self.model.decoder.set_active(1)
-
                 outputs, classified_repr = self.model(batch)
                 targets = batch[1][1:]
                 targets_style = batch[2]
@@ -230,11 +225,6 @@ class XETrainer(BaseTrainer):
                 outputs, classified_repr = self.model(batch)
 
                 targets = batch[1][1:]
-
-                if int(batch[2][0].cpu().numpy()[0]) == 1:
-                    self.model.decoder.set_active(0)
-                else:
-                    self.model.decoder.set_active(1)
 
                 batch_size = targets.size(1)
 

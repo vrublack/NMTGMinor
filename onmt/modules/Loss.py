@@ -188,8 +188,13 @@ class NMTLossFunc(LossFuncBase):
             clean_targets = targets
         
         detached_outputs = clean_input
+        """ detaching makes backward pass split into two steps:
+            one in the linear softmax (big)
+            one in the rest of the network
+            saving a lot of memory 
+        """
         if generator is not None:
-            outputs = detached_outputs
+            outputs = torch.autograd.Variable(detached_outputs.data, requires_grad=(backward))
             
         
         #~ split_size = int(math.ceil(self.shard_split / batch_size))
@@ -210,7 +215,7 @@ class NMTLossFunc(LossFuncBase):
             # actual loss function between the predictive distribution and target
             loss_t, loss_data_t = self._compute_loss(dist_t, target_t)
 
-            loss_data += loss_t
+            loss_data += loss_data_t
             
             # backward from loss
             # note: we only compute the gradients w.r.t the outputs 

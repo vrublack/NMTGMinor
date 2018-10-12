@@ -239,7 +239,7 @@ class XETrainer(BaseTrainer):
                     normalizer = tgt_size
 
                 loss_reconstruction, grad_outputs = self.loss_function(outputs, targets, generator=self.model.generator,
-                                                                       backward=False, mask=tgt_mask,
+                                                                       backward=True, mask=tgt_mask,
                                                                        normalizer=normalizer)
 
                 targets_style = batch[2]
@@ -247,7 +247,7 @@ class XETrainer(BaseTrainer):
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)
                 loss_total = loss_reconstruction
-                loss_total.backward()
+                #loss_total.backward()
 
                 # ~ outputs.backward(grad_outputs)
 

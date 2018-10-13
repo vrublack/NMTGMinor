@@ -21,7 +21,7 @@ class NonParallelDataset(object):
         style1 = srcData
         style2 = tgtData
 
-        concatSrc, targets = self.concat(style1, style2)
+        concatSrc, targets = self.concat(style2, style1)
         self.n_style1 = len(style1)
         self.n = len(concatSrc)
 

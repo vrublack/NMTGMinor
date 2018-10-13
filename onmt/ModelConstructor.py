@@ -179,13 +179,9 @@ def init_model_parameters(model, opt):
         from onmt.modules.Transformer.Layers import uniform_unit_scaling
 
         # We initialize the model parameters with Xavier init
-        init = torch.nn.init
+        pass
         
-        init.xavier_uniform_(model.generator.linear.weight)
-        init.xavier_uniform_(model.encoder.word_lut.weight.data)
-        for lut in model.decoder.get_word_lut():
-            init.xavier_uniform_(lut.weight.data)
-        
+
         #~ init = torch.nn.init.uniform
         #~ 
         #~ init(model.generator.linear.weight, -onmt.Constants.init_value, 

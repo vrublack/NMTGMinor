@@ -1,5 +1,7 @@
 from __future__ import division
 
+import random
+
 import onmt
 import onmt.Markdown
 import onmt.modules
@@ -207,7 +209,7 @@ if torch.cuda.is_available() and not opt.gpus:
 
 
 
-
+random.seed(opt.seed)
 torch.manual_seed(opt.seed)
 
 

@@ -18,10 +18,7 @@ def unsort(input, indices, dim=1):
     
     """ unsort the tensor based on indices which are created by sort """
     
-    """ dim is the dimension of batch size """
-    output = input.new(*input.size())
-    
-    output.scatter_(dim, indices.unsqueeze(0).unsqueeze(2), input)
+    output = input[:, indices, :]
     
     return output
     

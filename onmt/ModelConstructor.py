@@ -36,13 +36,14 @@ def build_model(opt, dicts):
     
         from onmt.modules.rnn.Models import RecurrentEncoder, RecurrentDecoder, RecurrentModel 
 
-        encoder = RecurrentEncoder(opt, dicts['src'])
+        encoder = RecurrentEncoder(opt, dicts['style1'])
 
-        decoder = RecurrentDecoder(opt, dicts['tgt'])
+        decoder = MultiDecoder([RecurrentDecoder(opt, dicts['style1']),
+                                RecurrentDecoder(opt, dicts['style1'])])
+
+        generator = onmt.modules.BaseModel.Generator(opt.rnn_size, dicts['style1'].size())
         
-        generator = onmt.modules.BaseModel.Generator(opt.rnn_size, dicts['tgt'].size())
-        
-        model = RecurrentModel(encoder, decoder, generator)    
+        model = RecurrentModel(opt, encoder, decoder, generator)
         
     elif opt.model == 'transformer':
         # raise NotImplementedError

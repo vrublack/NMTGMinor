@@ -11,7 +11,8 @@ from onmt.modules.rnn.Layers import EncoderLayer, DecoderLayer
 from torch.nn.utils.rnn import pack_padded_sequence as pack
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import PackedSequence
-from onmt.modules.Transformer.Layers import PrePostProcessing 
+from onmt.modules.Transformer.Layers import PrePostProcessing
+from style.Classifier import RepresentationClassifier
 
 
 def unsort(input, indices, dim=1):
@@ -161,6 +162,12 @@ class RecurrentDecoder(nn.Module):
         
 class RecurrentModel(NMTModel):
 
+    def __init__(self, opt, encoder, decoder, generator=None):
+        super(RecurrentModel, self).__init__(encoder, decoder, generator)
+
+        self.repr_classifier = RepresentationClassifier(opt, opt.rnn_size, opt.rnn_size // 2)
+
+
     def make_init_decoder_output(self, context):
         batch_size = context.size(1)
         h_size = (batch_size, self.decoder.hidden_size)
@@ -188,7 +195,9 @@ class RecurrentModel(NMTModel):
         # to debug: detach the context
         
         context, hiddens = self.encoder(src)
-        
+
+        classified_repr = self.repr_classifier(context.transpose(0, 1))
+
         context = Variable(context.data)
         
         out, hiddens, coverage = self.decoder(tgt, context, src)
@@ -199,6 +208,6 @@ class RecurrentModel(NMTModel):
         
         #~ print(out.size())
         
-        return out
+        return out, classified_repr
 
     

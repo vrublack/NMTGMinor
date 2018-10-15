@@ -19,11 +19,16 @@ class NonParallelDataset(object):
         self.dict = dict
 
         n = len(srcData)
-        print('WARNING: dividing src/tgt data in half, only for debugging purposes')
-        style1 = srcData[: n // 2]
-        style2 = tgtData[: n // 2]
+        print('WARNING: using style1 + style2 for each style -> 2x training data, only for debugging purposes')
+        style1 = srcData
+        style2 = tgtData
 
-        concatSrc, targets = self.concat(style1, style2)
+        concatSrc1, targets1 = self.concat(style1, style2)
+        concatSrc2, targets2 = self.concat(style2, style1)
+
+        concatSrc = concatSrc1 + concatSrc2
+        targets = targets1 + targets2
+
         self.n_style1 = len(style1)
         self.n = len(concatSrc)
 

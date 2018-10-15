@@ -16,6 +16,7 @@ class MultiDecoder(nn.Module):
         if i >= self.n:
             raise ValueError()
         self.active_decoder = i
+        print('Set active decoder to ' + str(i))
 
     def renew_buffer(self, new_len):
         return self.decoders[self.active_decoder].renew_buffer(new_len)

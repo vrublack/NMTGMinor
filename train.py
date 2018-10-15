@@ -35,7 +35,10 @@ parser.add_argument('-load_from', default='', type=str,
 parser.add_argument('-model', default='recurrent',
                     help="Optimization method. [recurrent|transformer|stochastic_transformer]")
 parser.add_argument('-layers', type=int, default=2,
-                    help='Number of layers in the LSTM encoder/decoder')                   
+                    help='Number of layers in the LSTM encoder/decoder')
+parser.add_argument('-translate_src', default=None, type=str,
+                    help='Print sample translation every time the model is saved, if specified.')
+
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,
                     help='Size of LSTM hidden states')

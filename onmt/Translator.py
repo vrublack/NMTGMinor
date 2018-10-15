@@ -22,8 +22,8 @@ class Translator(object):
                                map_location=lambda storage, loc: storage)
 
         model_opt = checkpoint['opt']
-        self.src_dict = checkpoint['dicts']['src']
-        self.tgt_dict = checkpoint['dicts']['tgt']
+        self.src_dict = checkpoint['dicts']['style1']
+        self.tgt_dict = checkpoint['dicts']['style1']
         self._type = model_opt.encoder_type \
             if "encoder_type" in model_opt else "text"
 
@@ -129,16 +129,14 @@ class Translator(object):
         beamSize = self.opt.beam_size
         batchSize = self._getBatchSize(srcBatch)
         
-        if self.model_type == 'recurrent':
+        if self.model_type == 'rnn':
 
             #  (1) run the encoder on the src
             encStates, context = self.model.encoder(srcBatch)
 
-            rnnSize = context.size(2)
+            rnnSize = context[0][0].size(2)
             
             decoder = self.model.decoder
-            attentionLayer = decoder.attn
-            useMasking = ( self._type == "text" and batchSize > 1 )
 
             #  This mask is applied to the attention model inside the decoder
             #  so that the attention ignores source padding
@@ -146,12 +144,11 @@ class Translator(object):
 
             #  (2) if a target is specified, compute the 'goldScore'
             #  (i.e. log likelihood) of the target under the model
-            goldScores = context.data.new(batchSize).zero_()
+            goldScores = context[0][0].data.new(batchSize).zero_()
             goldWords = 0
             if tgtBatch is not None:
                 decStates = encStates
-                decOut = self.model.make_init_decoder_output(context)
-                initOutput = self.model.make_init_decoder_output(context)
+                initOutput = self.model.make_init_decoder_output(context[0][0])
                 decOut, decStates, attn = self.model.decoder(
                     tgtBatch[:-1], decStates, context, initOutput, attn_mask=attn_mask)
                 for dec_t, tgt_t in zip(decOut, tgtBatch[1:].data):

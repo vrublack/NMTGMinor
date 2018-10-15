@@ -79,8 +79,8 @@ def len_penalty(s, l, alpha):
     l_term = math.pow(l, alpha)
     return s / l_term
 
-def main():
-    opt = parser.parse_args()
+def translate(args):
+    opt = parser.parse_args(args)
     opt.cuda = opt.gpu > -1
     if opt.cuda:
         torch.cuda.set_device(opt.gpu)
@@ -203,5 +203,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    translate(sys.argv[1:])
 

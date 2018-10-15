@@ -18,8 +18,10 @@ class NonParallelDataset(object):
                  multiplier=8, pad_count=True):
         self.dict = dict
 
-        style1 = srcData
-        style2 = tgtData
+        n = len(srcData)
+        print('WARNING: dividing src/tgt data in half, only for debugging purposes')
+        style1 = srcData[: n // 2]
+        style2 = tgtData[: n // 2]
 
         concatSrc, targets = self.concat(style1, style2)
         self.n_style1 = len(style1)

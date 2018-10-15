@@ -16,6 +16,7 @@ import numpy as np
 from onmt.multiprocessing.multiprocessing_wrapper import MultiprocessingRunner
 from onmt.ModelConstructor import init_model_parameters
 from onmt.train_utils.loss import HLoss
+import translate
 
 
 class BaseTrainer(object):
@@ -114,6 +115,8 @@ class XETrainer(BaseTrainer):
         file_name = '%s_ppl_%.2f_e%.2f.pt' % (opt.save_model, valid_ppl, epoch)
         print('Writing to %s' % file_name)
         torch.save(checkpoint, file_name)
+
+        return file_name
 
     def eval(self, data):
         epoch_loss = 0
@@ -423,7 +426,18 @@ class XETrainer(BaseTrainer):
                 best_val_loss = (valid_loss, reconstr_ppl, adv1, adv2)
 
             if epoch % opt.save_every_epoch == 0:
-                self.save(epoch, valid_loss)
+                model_fname = self.save(epoch, valid_loss)
+
+                # print translation to make it easier to see if the model is good
+                if opt.translate_src is not None:
+                    separator2 = '.' * 70
+                    print('\n' + separator2)
+                    for target_style in range(1, 3):
+                        print('\nSample translation with style {}:\n'.format(target_style))
+                        translate.translate(['-src', opt.translate_src, '-model', model_fname, '-target_style', str(target_style),
+                                             '-max_sent_length', '10', '-output', 'stdout'])
+                    print('\n' + separator2 + '\n')
+
             batchOrder = None
             iteration = None
             resume = False
@@ -443,5 +457,6 @@ class XETrainer(BaseTrainer):
                                                                                                       best_val_loss[2],
                                                                                                       best_val_loss[3],
                                                                                                       separator))
+
 
 

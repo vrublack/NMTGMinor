@@ -121,6 +121,9 @@ class XETrainer(BaseTrainer):
         return file_name
 
     def eval(self, data):
+        opt = self.opt
+        w_reconstr, w_adv = opt.w_reconstr, opt.w_adv
+
         epoch_loss = 0
         epoch_loss_reconstruction = 0
         epoch_loss_adv = 0
@@ -158,7 +161,7 @@ class XETrainer(BaseTrainer):
                 loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator,
                                                             backward=False)
                 loss_adv = self.adv_loss_function(classified_repr, targets_style)
-                loss_total = loss_reconstruction - loss_adv
+                loss_total = w_reconstr * loss_reconstruction - w_adv * loss_adv
 
                 loss_total = loss_total.data.cpu().numpy()
                 loss_adv = loss_adv.data.cpu().numpy()
@@ -179,6 +182,7 @@ class XETrainer(BaseTrainer):
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
+        w_reconstr, w_adv = opt.w_reconstr, opt.w_adv
         trainData = self.trainData
 
         # Clear the gradients of the model
@@ -270,11 +274,11 @@ class XETrainer(BaseTrainer):
 
                 # train discriminator
                 self.model.set_trainable(False, False, True)
-                _ = train_part(lambda loss_reconstr, loss_class : loss_class)
+                _ = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
 
                 # train generator
                 self.model.set_trainable(True, True, False)
-                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : loss_reconstr - loss_class)
+                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
 
 
 

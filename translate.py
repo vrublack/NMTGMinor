@@ -61,6 +61,8 @@ parser.add_argument('-gpu', type=int, default=-1,
                     help="Device to run on")
 parser.add_argument('-target_style', type=int, default=1,
                     help="Which style decoder should be used")
+parser.add_argument('-remove_bpe', action='store_true',
+                    help='Remove bpe from translation')
 
 
 def reportScore(name, scoreTotal, wordsTotal):
@@ -84,7 +86,13 @@ def translate(args):
     opt.cuda = opt.gpu > -1
     if opt.cuda:
         torch.cuda.set_device(opt.gpu)
-    
+
+    def remove_bpe(s):
+        if opt.remove_bpe:
+            return s.replace('@@ ', '')
+        else:
+            return s
+
     # Always pick n_best
     opt.n_best = opt.beam_size
         
@@ -159,7 +167,7 @@ def translate(args):
                         
             if not opt.print_nbest:
                 #~ print(predBatch[b][0])
-                outF.write(" ".join(predBatch[b][0]) + '\n')
+                outF.write(remove_bpe(" ".join(predBatch[b][0]) + '\n'))
                 outF.flush()
 
             if opt.verbose:

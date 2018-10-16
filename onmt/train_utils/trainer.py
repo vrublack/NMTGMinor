@@ -435,7 +435,7 @@ class XETrainer(BaseTrainer):
                     for target_style in range(1, 3):
                         print('\nSample translation with style {}:\n'.format(target_style))
                         translate.translate(['-src', opt.translate_src, '-model', model_fname, '-target_style', str(target_style),
-                                             '-max_sent_length', '10', '-output', 'stdout'])
+                                             '-max_sent_length', '10', '-output', 'stdout', '-remove_bpe'])
                     print('\n' + separator2 + '\n')
 
             batchOrder = None

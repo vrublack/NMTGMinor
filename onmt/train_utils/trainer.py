@@ -119,6 +119,9 @@ class XETrainer(BaseTrainer):
         return file_name
 
     def eval(self, data):
+        opt = self.opt
+        w_reconstr, w_adv1, w_adv2 = opt.w_reconstr, opt.w_adv1, opt.w_adv2
+
         epoch_loss = 0
         epoch_loss_reconstruction = 0
         epoch_loss_adv1 = 0
@@ -158,7 +161,7 @@ class XETrainer(BaseTrainer):
                                                             backward=False)
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)
-                loss_total = loss_reconstruction + loss_adv1 + loss_adv2
+                loss_total = w_reconstr * loss_reconstruction + w_adv1 * loss_adv1 - w_adv2 * loss_adv2
 
                 loss_total = loss_total.data.cpu().numpy()
                 loss_adv1 = loss_adv1.data.cpu().numpy()
@@ -181,6 +184,7 @@ class XETrainer(BaseTrainer):
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
+        w_reconstr, w_adv1, w_adv2 = opt.w_reconstr, opt.w_adv1, opt.w_adv2
         trainData = self.trainData
 
         # Clear the gradients of the model
@@ -263,7 +267,7 @@ class XETrainer(BaseTrainer):
 
                 loss_adv1 = self.adv1_loss_function(classified_repr, targets_style)
                 loss_adv2 = self.adv2_loss_function(classified_repr)
-                loss_total = loss_reconstruction + loss_adv1 - loss_adv2
+                loss_total = w_reconstr * loss_reconstruction + w_adv1 * loss_adv1 - w_adv2 * loss_adv2
                 loss_total.backward()
 
                 # ~ outputs.backward(grad_outputs)

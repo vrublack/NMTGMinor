@@ -48,6 +48,8 @@ parser.add_argument('-w_reconstr', type=float, default=1.0,
                     help='Weight of reconstruction loss')
 parser.add_argument('-w_adv', type=float, default=1.0,
                     help='Weight of adv loss (cross-entropy of classifier)')
+parser.add_argument('-adv_train_n', type=int, default=1,
+                    help='Number of iterations for which to train the discriminator during each mini-batch')
 
 
 # Recurrent Model options

@@ -274,7 +274,8 @@ class XETrainer(BaseTrainer):
 
                 # train discriminator
                 self.model.set_trainable(False, False, True)
-                _ = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
+                for i in range(opt.adv_train_n):
+                    _ = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
 
                 # train generator
                 self.model.set_trainable(True, True, False)

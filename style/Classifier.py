@@ -5,11 +5,12 @@ from torch.nn.functional import softmax
 
 class RepresentationClassifier(nn.Module):
     """
-    Simple feed-forward classifier with 1 hidden layer
+    Simple lstm classifier with 1 hidden layer
     """
     def __init__(self, opt, input_dim, hidden_dim, dropout=0, classes=2):
         super(RepresentationClassifier, self).__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim, dropout=dropout)
+        self.lstm = nn.LSTM(input_dim, hidden_dim)
+        self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_dim, classes)
         self.hidden_dim = hidden_dim
         self.cuda = (len(opt.gpus) >= 1)
@@ -32,6 +33,8 @@ class RepresentationClassifier(nn.Module):
         # hidden are ideally created only once but the batch size changes
         hidden = self.init_hidden(x.shape[1])
         lstm_out, hidden = self.lstm(x, hidden)
-        x = self.fc(lstm_out[-1,:,:])
+        h = lstm_out[-1,:,:]
+        h = self.dropout(h)
+        x = self.fc(h)
         x = x.squeeze(1)
         return softmax(x, dim=1)

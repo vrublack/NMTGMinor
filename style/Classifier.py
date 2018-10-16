@@ -7,9 +7,9 @@ class RepresentationClassifier(nn.Module):
     """
     Simple feed-forward classifier with 1 hidden layer
     """
-    def __init__(self, opt, input_dim, hidden_dim, classes=2):
+    def __init__(self, opt, input_dim, hidden_dim, dropout=0, classes=2):
         super(RepresentationClassifier, self).__init__()
-        self.lstm = nn.LSTM(input_dim, hidden_dim)
+        self.lstm = nn.LSTM(input_dim, hidden_dim, dropout=dropout)
         self.fc = nn.Linear(hidden_dim, classes)
         self.hidden_dim = hidden_dim
         self.cuda = (len(opt.gpus) >= 1)

@@ -425,7 +425,7 @@ class Transformer(NMTModel):
     def __init__(self, opt, encoder, decoder, generator=None):
         super(Transformer, self).__init__(encoder, decoder, generator)
 
-        self.repr_classifier = RepresentationClassifier(opt, encoder.model_size, encoder.model_size // 2)
+        self.repr_classifier = RepresentationClassifier(opt, encoder.model_size, 25)
 
 
     def forward(self, input, grow=False):

@@ -39,6 +39,13 @@ parser.add_argument('-layers', type=int, default=2,
 parser.add_argument('-translate_src', default=None, type=str,
                     help='Print sample translation every time the model is saved, if specified.')
 
+# Adversarial classifier options
+parser.add_argument('-classifier_dim', type=int, default=5,
+                    help='Dimension of hidden layer (lstm) in adversarial classifier')
+parser.add_argument('-classifier_dropout', type=float, default=0.5,
+                    help='Dropout applied to lstm in adversarial classifier')
+
+
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,
                     help='Size of LSTM hidden states')

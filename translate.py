@@ -63,6 +63,8 @@ parser.add_argument('-target_style', type=int, default=1,
                     help="Which style decoder should be used")
 parser.add_argument('-remove_bpe', action='store_true',
                     help='Remove bpe from translation')
+parser.add_argument('-diff', action='store_true',
+                    help='Show diff between original and translation in each line')
 
 
 def reportScore(name, scoreTotal, wordsTotal):
@@ -87,11 +89,23 @@ def translate(args):
     if opt.cuda:
         torch.cuda.set_device(opt.gpu)
 
-    def remove_bpe(s):
+    def postprocess(s):
+        s = s.replace('&apos;', "'")
+
         if opt.remove_bpe:
             return s.replace('@@ ', '')
         else:
             return s
+
+    def diff(source, changed):
+        import difflib
+
+        def clean(comp):
+            return comp.strip().replace('- ', '-').replace('+ ', '+')
+
+        d = difflib.Differ()
+        l = list(d.compare(source.split(), changed.split()))
+        return ' '.join([clean(comp) for comp in l])
 
     # Always pick n_best
     opt.n_best = opt.beam_size
@@ -166,8 +180,13 @@ def translate(args):
             count += 1
                         
             if not opt.print_nbest:
-                #~ print(predBatch[b][0])
-                outF.write(remove_bpe(" ".join(predBatch[b][0]) + '\n'))
+                pred = predBatch[b][0]
+                src = srcBatch[b]
+                if opt.diff:
+                    outF.write(diff(postprocess(' '.join(src)), postprocess(" ".join(pred))) + '\n')
+                else:
+                    outF.write(postprocess(" ".join(pred) + '\n'))
+
                 outF.flush()
 
             if opt.verbose:

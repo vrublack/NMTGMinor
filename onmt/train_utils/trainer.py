@@ -275,11 +275,14 @@ class XETrainer(BaseTrainer):
                 # train discriminator
                 self.model.set_trainable(False, False, True)
                 for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
+                    f_loss_discr = lambda loss_reconstr, loss_class : w_adv * loss_class
+                    _ = train_part(f_loss_discr)
 
                 # train generator
                 self.model.set_trainable(True, True, False)
-                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
+                # make classifier prediction closer to 0.5
+                f_loss_encoder_decoder = lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_adv * abs(loss_class + math.log(0.5))
+                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(f_loss_encoder_decoder)
 
 
 

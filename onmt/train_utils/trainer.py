@@ -147,7 +147,7 @@ class XETrainer(BaseTrainer):
                         prob distribution from decoder generator
                 """
 
-                if int(batch[2][0].cpu().numpy()) == 1:
+                if int(batch[2][0].cpu().numpy()) == 0:
                     self.model.decoder.set_active(0)
                 else:
                     self.model.decoder.set_active(1)
@@ -234,7 +234,7 @@ class XETrainer(BaseTrainer):
 
             oom = False
 
-            if int(batch[2][0].cpu().numpy()) == 1:
+            if int(batch[2][0].cpu().numpy()) == 0:
                 self.model.decoder.set_active(0)
             else:
                 self.model.decoder.set_active(1)

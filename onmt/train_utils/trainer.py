@@ -161,7 +161,7 @@ class XETrainer(BaseTrainer):
                 loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator,
                                                             backward=False)
                 loss_adv = self.adv_loss_function(classified_repr, targets_style)
-                loss_total = w_reconstr * loss_reconstruction - w_adv * loss_adv
+                loss_total = w_reconstr * loss_reconstruction + w_adv * loss_adv
 
                 loss_total = loss_total.data.cpu().numpy()
                 loss_adv = loss_adv.data.cpu().numpy()

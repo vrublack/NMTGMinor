@@ -35,7 +35,7 @@ class BaseTrainer(object):
         self.cuda = (len(opt.gpus) >= 1)
 
         self.loss_function = loss_function
-        self.adv_loss_function = nn.BCELoss(reduction='sum')
+        self.adv_loss_function = nn.NLLLoss(reduction='sum')
 
         self.start_time = 0
 
@@ -147,7 +147,7 @@ class XETrainer(BaseTrainer):
                         prob distribution from decoder generator
                 """
 
-                if int(batch[2][0].cpu().numpy()[0]) == 1:
+                if int(batch[2][0].cpu().numpy()) == 1:
                     self.model.decoder.set_active(0)
                 else:
                     self.model.decoder.set_active(1)
@@ -172,7 +172,7 @@ class XETrainer(BaseTrainer):
                 epoch_loss_adv += loss_adv
                 total_words += targets.data.ne(onmt.Constants.PAD).sum().item()
                 num_accumulated_sents += batch_size
-                correct += classified_repr.gt(0.5).eq(targets_style.byte()).sum(dim=0).cpu().numpy()[0]
+                correct += classified_repr.argmax(dim=1).eq(targets_style).sum(dim=0).cpu().numpy()
 
 
         self.model.train()
@@ -234,7 +234,7 @@ class XETrainer(BaseTrainer):
 
             oom = False
 
-            if int(batch[2][0].cpu().numpy()[0]) == 1:
+            if int(batch[2][0].cpu().numpy()) == 1:
                 self.model.decoder.set_active(0)
             else:
                 self.model.decoder.set_active(1)
@@ -312,7 +312,7 @@ class XETrainer(BaseTrainer):
                 epoch_loss_reconstruction += loss_reconstruction
                 epoch_loss_adv += loss_adv
                 total_words += num_words
-                correct += classified_repr.gt(0.5).eq(targets_style.byte()).sum(dim=0).cpu().numpy()[0]
+                correct += classified_repr.argmax(dim=1).eq(targets_style).sum(dim=0).cpu().numpy()
 
                 optim = self.optim
 

@@ -52,7 +52,7 @@ class NonParallelDataset(object):
 
 
     def concat(self, style1, style2):
-        return style1 + style2, [[0, 1]] * len(style1) + [[1, 0]] * len(style2)
+        return style1 + style2, [0] * len(style1) + [1] * len(style2)
 
 
     #~ # This function allocates the mini-batches (grouping sentences with the same size)
@@ -154,7 +154,7 @@ class NonParallelDataset(object):
 
         srctensor = wrap(srcBatch, self._type)
         tgtSeqtensor = wrap(tgtSeqBatch, self._type)
-        tgttensor = Tensor(tgtBatch)
+        tgttensor = tensor(tgtBatch, dtype=torch.long)
 
         return [srctensor, tgtSeqtensor, tgttensor]
 

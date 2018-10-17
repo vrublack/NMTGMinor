@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.functional import softmax
+from torch.nn.functional import log_softmax
 
 class RepresentationClassifier(nn.Module):
     """
@@ -37,4 +37,4 @@ class RepresentationClassifier(nn.Module):
         h = self.dropout(h)
         x = self.fc(h)
         x = x.squeeze(1)
-        return softmax(x, dim=1)
+        return log_softmax(x, dim=1)

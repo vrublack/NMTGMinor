@@ -35,7 +35,7 @@ class BaseTrainer(object):
         self.cuda = (len(opt.gpus) >= 1)
 
         self.loss_function = loss_function
-        self.adv_loss_function = nn.BCELoss(reduce=True, size_average=False)
+        self.adv_loss_function = nn.BCELoss(reduction='sum')
 
         self.start_time = 0
 

@@ -275,12 +275,7 @@ class XETrainer(BaseTrainer):
                 # train discriminator
                 self.model.set_trainable(False, False, True)
                 for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
-
-                # train generator
-                self.model.set_trainable(True, True, False)
-                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
-
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
 
 
             except RuntimeError as e:
@@ -302,14 +297,12 @@ class XETrainer(BaseTrainer):
                 # the history of the whole epoch, leading to a memory overflow
                 loss_total = loss_total.data.cpu().numpy()
                 loss_adv = loss_adv.data.cpu().numpy()
-                loss_reconstruction = loss_reconstruction.data.cpu().numpy()
 
                 num_words = tgt_size
                 report_loss += loss_total
                 report_tgt_words += num_words
                 report_src_words += src_size
                 epoch_loss += loss_total
-                epoch_loss_reconstruction += loss_reconstruction
                 epoch_loss_adv += loss_adv
                 total_words += num_words
                 correct += classified_repr.argmax(dim=1).eq(targets_style).sum(dim=0).cpu().numpy()

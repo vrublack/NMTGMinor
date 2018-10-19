@@ -273,13 +273,13 @@ class XETrainer(BaseTrainer):
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
                 # train discriminator
-                if epoch % 2 == 0:
-                    self.model.set_trainable(False, False, True)
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
-                else:
-                    # train generator
-                    self.model.set_trainable(True, True, False)
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
+                self.model.set_trainable(False, False, True)
+                for _ in range(opt.adv_train_n):
+                    _ = train_part(lambda loss_reconstr, loss_class : w_adv * loss_class)
+
+                # train generator
+                self.model.set_trainable(True, True, False)
+                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
 
 
 
@@ -392,7 +392,6 @@ class XETrainer(BaseTrainer):
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))
-            print('\n(trained {})'.format(['discriminator', 'encoder + decoder'][epoch % 2]))
             print('{}\nTrain loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}\n{}\n'.format(separator,
                                                                                                           train_loss,
                                                                                                           reconstr_ppl,

@@ -20,7 +20,7 @@ do
         else
            src_t=0
         fi
-        printf -v FNAME "mout_%s_target_%d" "${models[$i]}" $t
+        printf -v FNAME "out/mout_%s_target_%d" "${models[$i]}" $t
         python3 ../translate.py -model ../save/${models[$i]} -src ${DATA_PATH}/valid-mid.$src_t -target_style $t -out $FNAME -max_sent_length 30 -remove_bpe
         OUT_FNAMES+=($FNAME)
         REF_FNAMES+=(${REF_PATH}/valid-mid.$src_t)
@@ -34,5 +34,6 @@ python3 ${SST_PATH}/predict_style_transfer.py \
 --language_model ${SST_PATH}/base-1/save/yelp-lm.pt \
 --idx ${SST_PATH}/save/index-glove.twitter.27B.200d.txt \
 --emsize 200 \
+--output_path ./out \
 --inputs_transferred "${OUT_FNAMES[@]}" \
 --inputs_original "${REF_FNAMES[@]}" \

@@ -1,17 +1,11 @@
-# to run on cluster
+# to run on local computer
 
-mkdir -p /tmp/vrublack
-cp -n /data/ASR5/vrublack/emb/glove.twitter.27B.200d.txt /tmp/vrublack/glove.twitter.27B.200d.txt
-cp -r -n /data/ASR5/vrublack/data/yelp /tmp/vrublack/yelp
-cp -r -n /data/ASR5/vrublack/data/yelp-prepr /tmp/vrublack/yelp-prepr
-
-
-DATA_PATH=/tmp/vrublack/yelp-prepr/valid
+# DATA_PATH=/data/ASR5/vrublack/data/yelp-prepr/valid
+DATA_PATH=/Users/valentin/BThesis/data/yelp-prepr/valid
 # without BPE!
-REF_PATH=/tmp/vrublack/yelp/valid
-SST_PATH=/home/vrublack/SST-RNN
-EMB_PATH=/tmp/vrublack/glove.twitter.27B.200d.txt
-
+REF_PATH=/Users/valentin/BThesis/data/yelp/valid
+SST_PATH=/Users/valentin/PycharmProjects/SST-RNN-Pytorch
+EMB_PATH=/Users/valentin/Downloads/glove.twitter.27B/glove.twitter.27B.200d.txt
 
 models=( "$@" )
 arraylength=${#models[@]}
@@ -29,7 +23,7 @@ do
            src_t=0
         fi
         printf -v FNAME "out/mout_%s_target_%d" "${models[$i]}" $t
-        python3 ../translate.py -model ../save/${models[$i]} -src ${DATA_PATH}/valid-mid.$src_t -target_style $t -out $FNAME -max_sent_length 100 -remove_bpe -gpu 0
+        python3 ../translate.py -model ../save/${models[$i]} -src ${DATA_PATH}/valid-mid.$src_t -target_style $t -out $FNAME -max_sent_length 30 -remove_bpe
         OUT_FNAMES+=($FNAME)
         REF_FNAMES+=(${REF_PATH}/valid-mid.$src_t)
     done
@@ -43,6 +37,5 @@ python3 ${SST_PATH}/predict_style_transfer.py \
 --idx ${SST_PATH}/save/index-glove.twitter.27B.200d.txt \
 --emsize 200 \
 --output_path ./out \
---cuda \
 --inputs_transferred "${OUT_FNAMES[@]}" \
 --inputs_original "${REF_FNAMES[@]}" \

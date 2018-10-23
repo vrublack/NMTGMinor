@@ -3,10 +3,8 @@
 mkdir -p /tmp/vrublack
 cp -n /data/ASR5/vrublack/emb/glove.twitter.27B.200d.txt /tmp/vrublack/glove.twitter.27B.200d.txt
 cp -r -n /data/ASR5/vrublack/data/yelp /tmp/vrublack/yelp
-cp -r -n /data/ASR5/vrublack/data/yelp-prepr /tmp/vrublack/yelp-prepr
 
-
-DATA_PATH=/tmp/vrublack/yelp-prepr/valid
+DATA_PATH=/tmp/vrublack/yelp/valid
 # without BPE!
 REF_PATH=/tmp/vrublack/yelp/valid
 SST_PATH=/home/vrublack/SST-RNN

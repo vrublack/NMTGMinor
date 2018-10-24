@@ -49,6 +49,10 @@ class TransformerEncoder(nn.Module):
         self.word_lut = nn.Embedding(dicts.size(),
                                      self.model_size,
                                      padding_idx=onmt.Constants.PAD)
+
+        if self.model_size % opt.bottleneck_size != 0:
+            raise AssertionError('model_size has to be a multiple of bottleneck_size')
+        self.bottleneck_size = opt.bottleneck_size if opt.bottleneck_size != -1 else self.model_size
         
         if opt.time == 'positional_encoding':
             self.time_transformer = positional_encoder
@@ -59,16 +63,14 @@ class TransformerEncoder(nn.Module):
         
         self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d', static=False)
         
-        self.postprocess_layer = PrePostProcessing(self.model_size, 0, sequence='n')
-
-        if opt.bottleneck:
-            self.bottleneck_layer = Bottleneck(self.model_size)
-        else:
-            self.bottleneck_layer = None
+        self.postprocess_layer = PrePostProcessing(self.bottleneck_size, 0, sequence='n')
 
         self.positional_encoder = positional_encoder
-        
-        self.layer_modules = nn.ModuleList([EncoderLayer(self.n_heads, self.model_size, self.dropout, self.inner_size, self.attn_dropout) for _ in range(self.layers)])
+
+        layers = [EncoderLayer(self.n_heads, self.model_size, self.dropout, self.inner_size, self.model_size, self.attn_dropout) for _ in range(self.layers - 1)]
+        layers.append(EncoderLayer(self.n_heads, self.model_size, self.dropout, self.inner_size, self.bottleneck_size, self.attn_dropout))
+
+        self.layer_modules = nn.ModuleList(layers)
     
         self.pretrained_point = -1
         
@@ -160,9 +162,6 @@ class TransformerEncoder(nn.Module):
         # on the output, since the output can grow very large, being the sum of
         # a whole stack of unnormalized layer outputs.    
         context = self.postprocess_layer(context)
-
-        if self.bottleneck_layer is not None:
-            context = self.bottleneck_layer(context)
 
         return context, mask_src
         
@@ -425,7 +424,11 @@ class Transformer(NMTModel):
     def __init__(self, opt, encoder, decoder, generator=None):
         super(Transformer, self).__init__(encoder, decoder, generator)
 
-        self.repr_classifier = RepresentationClassifier(opt, encoder.model_size, opt.classifier_dim, opt.classifier_dropout)
+        if encoder.model_size % opt.bottleneck_size != 0:
+            raise AssertionError('model_size has to be a multiple of bottleneck_size')
+        self.bottleneck_size = opt.bottleneck_size if opt.bottleneck_size != -1 else encoder.model_size
+
+        self.repr_classifier = RepresentationClassifier(opt, self.bottleneck_size, opt.classifier_dim, opt.classifier_dropout)
 
 
     def forward(self, input, grow=False):
@@ -449,9 +452,6 @@ class Transformer(NMTModel):
 
         classified_repr = self.repr_classifier(context)
 
-        if self.encoder.bottleneck_layer is not None:
-            src = src[:, :1]
-
         output, coverage = self.decoder(tgt, context, src, grow=grow)
         
         output = output.transpose(0, 1) # transpose to have time first, like RNN models
@@ -464,9 +464,6 @@ class Transformer(NMTModel):
         from onmt.modules.StochasticTransformer.Models import StochasticTransformerEncoder, StochasticTransformerDecoder
         from onmt.modules.UniversalTransformer.Models import UniversalTransformerDecoder
 
-        if self.encoder.bottleneck_layer is not None:
-            src = src[:1, :]
-        
         if isinstance(self.decoder, TransformerDecoder) or isinstance(self.decoder, StochasticTransformerDecoder) \
                 or isinstance(self.decoder, UniversalTransformerDecoder) or isinstance(self.decoder, MultiDecoder):
             decoder_state = TransformerDecodingState(src, context, beamSize=beamSize)

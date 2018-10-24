@@ -73,7 +73,9 @@ parser.add_argument('-brnn_merge', default='concat',
 parser.add_argument('-model_size', type=int, default=512,
     help='Size of embedding / transformer hidden')      
 parser.add_argument('-inner_size', type=int, default=2048,
-    help='Size of inner feed forward layer')  
+    help='Size of inner feed forward layer')
+parser.add_argument('-bottleneck_size', type=int, default=-1,
+    help='Size of bottleneck at the end of decoder (=size of context between encoder and decoder)')
 parser.add_argument('-n_heads', type=int, default=8,
     help='Number of heads for multi-head attention') 
 parser.add_argument('-checkpointing', type=int, default=0,
@@ -198,9 +200,6 @@ parser.add_argument('-log_interval', type=int, default=100,
                     help="Print stats at this interval.")
 parser.add_argument('-save_every_epoch', type=int, default=-1,
                     help="Save every this interval in epochs.")
-
-parser.add_argument('-bottleneck', action='store_true',
-                    help='Use a bottleneck after the encoder')
 
 
 opt = parser.parse_args()

@@ -152,6 +152,11 @@ class PrePostProcessing(nn.Module):
     def forward(self, tensor, input_tensor=None, mask=None):
         #~ mask = None
         output = tensor
+
+        if input_tensor is not None and input_tensor.shape != tensor.shape:
+            # bottleneck layer -> eliminate additional dimension of input by averaging
+            input_tensor = input_tensor.reshape((*output.shape, -1)).mean(dim=3)
+
         for step in self.steps:
             if step == 'n':
                 output = self.layer_norm(output, mask=mask)
@@ -242,7 +247,13 @@ class MultiHeadAttention(nn.Module):
     def forward(self, query, key, value, mask, query_mask=None, value_mask=None):
         b, len_query = query.size(0), query.size(1)
         len_key = key.size(1)
-        
+
+        if key.shape[2] < query.shape[2]:
+            # bottleneck -> just repeat key and value to make it compatible with query
+            bottleneck_factor = query.shape[2] // key.shape[2]
+            key = key.repeat((1, 1, bottleneck_factor))
+            value = value.repeat((1, 1, bottleneck_factor))
+
         key_mask = value_mask
         
         # project inputs to multi-heads
@@ -269,7 +280,7 @@ class MultiHeadAttention(nn.Module):
         attns = attns.float().masked_fill_(mask_, -float('inf')).type_as(attns)
         attns = self.sm(attns)
         # return mean attention from all heads as coverage 
-        coverage = torch.mean(attns, dim=1) 
+        coverage = torch.mean(attns, dim=1)
         attns = self.attn_dropout(attns)
         attns = attns.view(b*self.h, len_query, len_key)
         
@@ -320,7 +331,46 @@ class FeedForward(nn.Module):
         out = self.fc_2(out)
         return out
 
-    
+
+class FeedForwardBottleneck(nn.Module):
+    """Applies position-wise feed forward to inputs
+
+    Args:
+        d_model: dimension of model
+        d_ff:    dimension of feed forward
+        p:       dropout probability
+
+    Params:
+        fc_1: FC layer from d_model to d_ff
+        fc_2: FC layer from d_ff to d_model
+
+    Input Shapes:
+        input: batch_size x len x d_model
+
+    Output Shapes:
+        out: batch_size x len x d_model
+    """
+
+    def __init__(self, d_model, d_ff, d_bottleneck, p, static=True):
+        super(FeedForwardBottleneck, self).__init__()
+        self.d_model = d_model
+        self.d_ff = d_ff
+        self.fc_1 = Linear(d_model, d_ff, nonlinearity="relu")
+        self.fc_2 = Linear(d_ff, d_bottleneck)
+
+        if static:
+            self.dropout = StaticDropout(p)
+        else:
+            self.dropout = nn.Dropout(p)
+
+    def forward(self, input):
+
+        out = F.relu(self.fc_1(input), inplace=False)
+        out = self.dropout(out)
+        out = self.fc_2(out)
+        return out
+
+
 class EncoderLayer(nn.Module):
     """Wraps multi-head attentions and position-wise feed forward into one encoder layer
     
@@ -344,22 +394,24 @@ class EncoderLayer(nn.Module):
         out: batch_size x len_query x d_model
     """
     
-    def __init__(self, h, d_model, p, d_ff, attn_p=0.1, version=1.0):
+    def __init__(self, h, d_model, p, d_ff, d_bottleneck, attn_p=0.1, version=1.0):
         super(EncoderLayer, self).__init__()
         self.version = version
         
         self.preprocess_attn = PrePostProcessing(d_model, p, sequence='n')
         self.postprocess_attn = PrePostProcessing(d_model, p, sequence='da', static=onmt.Constants.static)
         self.preprocess_ffn = PrePostProcessing(d_model, p, sequence='n')
-        self.postprocess_ffn = PrePostProcessing(d_model, p, sequence='da', static=onmt.Constants.static)
+        self.postprocess_ffn = PrePostProcessing(d_bottleneck, p, sequence='da', static=onmt.Constants.static)
         self.multihead = MultiHeadAttention(h, d_model, attn_p=attn_p, static=onmt.Constants.static)
         
         if onmt.Constants.activation_layer == 'linear_relu_linear':
             ff_p = p
-            feedforward = FeedForward(d_model, d_ff, ff_p,static=onmt.Constants.static)
+            feedforward = FeedForwardBottleneck(d_model, d_ff, d_bottleneck, ff_p, static=onmt.Constants.static)
         elif onmt.Constants.activation_layer == 'maxout':
             k = int(math.ceil(d_ff / d_model))
             feedforward = MaxOut(d_model, d_model, k)
+            if d_bottleneck != d_model:
+                raise NotImplementedError()
         self.feedforward = Bottle(feedforward)
             
     def forward(self, input, attn_mask, pad_mask=None):

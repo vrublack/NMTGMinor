@@ -220,6 +220,7 @@ class XETrainer(BaseTrainer):
         start = time.time()
         nSamples = len(trainData)
         dataset = self.dataset
+        classifier_gradient = 0
 
         num_accumulated_sents = 0
         num_total_sents = 0
@@ -268,18 +269,28 @@ class XETrainer(BaseTrainer):
 
                     # update parameters immediately
                     self.optim.step(grad_denom=1)
-                    self.model.zero_grad()
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
                 # train discriminator
                 self.model.set_trainable(False, False, True)
                 for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
+                    f_loss_discr = lambda loss_reconstr, loss_class : w_classif * loss_class
+                    _ = train_part(f_loss_discr)
+                    classifier_gradient += self.model.repr_classifier.fc.weight.grad.sum().abs().cpu().numpy()
+                    self.model.zero_grad()
 
                 # train generator
                 self.model.set_trainable(True, True, False)
-                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
+                # make classifier prediction closer to 0.5
+                # flip labels to make correct classifier output punished more
+                # (resulting error function is higher in [0, 0.5] than in [0.5, 1])
+                self.flip_labels(targets_style)
+                f_loss_encoder_decoder = lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_adv * abs(loss_class + math.log(0.5))
+                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(f_loss_encoder_decoder)
+                self.model.zero_grad()
+                # flip them back, of course
+                self.flip_labels(targets_style)
 
 
 
@@ -332,7 +343,13 @@ class XETrainer(BaseTrainer):
                     start = time.time()
 
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
-               epoch_loss_adv / num_total_sents, correct / num_total_sents
+               epoch_loss_adv / num_total_sents, correct / num_total_sents, classifier_gradient / num_total_sents
+
+
+    def flip_labels(self, targets_style):
+        # in-place
+        targets_style.add_(-1).abs_()
+
 
     def run(self, save_file=None):
 
@@ -388,15 +405,12 @@ class XETrainer(BaseTrainer):
             print('')
 
             #  (1) train for one epoch on the training set
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, resume=resume,
+            train_loss, reconstr, adv, adv_accuracy, classif_grad = self.train_epoch(epoch, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))
-            print('{}\nTrain loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}\n{}\n'.format(separator,
-                                                                                                          train_loss,
-                                                                                                          reconstr_ppl,
-                                                                                                          adv, adv_accuracy,
-                                                                                                          separator))
+            print('{}\nTrain loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}, Classifier gradient: {}\n{}\n'.format(
+                separator, train_loss, reconstr_ppl, adv, adv_accuracy, classif_grad, separator))
             if best_train_loss[0] is None or best_train_loss[0] > train_loss:
                 best_train_loss = (train_loss, reconstr_ppl, adv)
 

@@ -283,14 +283,9 @@ class XETrainer(BaseTrainer):
                 # train generator
                 self.model.set_trainable(True, True, False)
                 # make classifier prediction closer to 0.5
-                # flip labels to make correct classifier output punished more
-                # (resulting error function is higher in [0, 0.5] than in [0.5, 1])
-                self.flip_labels(targets_style)
                 f_loss_encoder_decoder = lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_adv * abs(loss_class + math.log(0.5))
                 loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(f_loss_encoder_decoder)
                 self.model.zero_grad()
-                # flip them back, of course
-                self.flip_labels(targets_style)
 
 
 

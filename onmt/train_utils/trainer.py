@@ -279,7 +279,8 @@ class XETrainer(BaseTrainer):
 
                 # train generator
                 self.model.set_trainable(True, True, False)
-                loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
+                for _ in range(opt.reconstr_train_n):
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
 
 
 

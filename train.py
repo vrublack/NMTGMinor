@@ -52,7 +52,8 @@ parser.add_argument('-w_classif', type=float, default=1.0,
                     help='Weight of classifier loss (cross-entropy)')
 parser.add_argument('-adv_train_n', type=int, default=1,
                     help='Number of iterations for which to train the discriminator during each mini-batch')
-
+parser.add_argument('-reconstr_train_n', type=int, default=1,
+                    help='Number of iterations for which to train the encoder and decoder during each mini-batch')
 
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,

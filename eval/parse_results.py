@@ -102,7 +102,7 @@ for fname in os.listdir(EVAL_OUT_DIR):
 def avg(tup1, tup2):
     res = []
     for i in range(len(tup1)):
-        res.append(float('{:.2f}'.format((tup1[i] + tup2[i]) / 2)))
+        res.append(float('{:.3f}'.format((tup1[i] + tup2[i]) / 2)))
     return tuple(res)
 
 

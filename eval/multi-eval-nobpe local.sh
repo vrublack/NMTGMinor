@@ -1,6 +1,5 @@
 # to run on local computer
 
-# DATA_PATH=/data/ASR5/vrublack/data/yelp-prepr/valid
 DATA_PATH=/Users/valentin/BThesis/data/yelp/valid
 REF_PATH=/Users/valentin/BThesis/data/yelp/valid
 SST_PATH=/Users/valentin/PycharmProjects/SST-RNN-Pytorch

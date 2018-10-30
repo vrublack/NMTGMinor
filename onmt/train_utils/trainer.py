@@ -122,7 +122,7 @@ class XETrainer(BaseTrainer):
 
     def eval(self, data):
         opt = self.opt
-        w_reconstr, w_adv, w_classif = opt.w_reconstr, opt.w_adv, opt.w_classif
+        w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
 
         epoch_loss = 0
         epoch_loss_reconstruction = 0
@@ -146,11 +146,6 @@ class XETrainer(BaseTrainer):
                         hidden states from decoder or
                         prob distribution from decoder generator
                 """
-
-                if int(batch[2][0].cpu().numpy()) == 0:
-                    self.model.decoder.set_active(0)
-                else:
-                    self.model.decoder.set_active(1)
 
                 outputs, classified_repr = self.model(batch)
                 targets = batch[1][1:]
@@ -182,7 +177,7 @@ class XETrainer(BaseTrainer):
     def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
-        w_reconstr, w_adv, w_classif = opt.w_reconstr, opt.w_adv, opt.w_classif
+        w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
         trainData = self.trainData
 
         # Clear the gradients of the model
@@ -234,11 +229,6 @@ class XETrainer(BaseTrainer):
 
             oom = False
 
-            if int(batch[2][0].cpu().numpy()) == 0:
-                self.model.decoder.set_active(0)
-            else:
-                self.model.decoder.set_active(1)
-
             targets = batch[1][1:]
             targets_style = batch[2]
 
@@ -272,17 +262,8 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                # train discriminator
-                self.model.set_trainable(False, False, True)
-                for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
-
-                # train generator
-                self.model.set_trainable(True, True, False)
-                for _ in range(opt.reconstr_train_n):
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
-
-
+                loss_total, loss_reconstruction, loss_adv, classified_repr = \
+                    train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_classif * loss_class)
 
             except RuntimeError as e:
                 if 'out of memory' in str(e):

@@ -48,6 +48,8 @@ parser.add_argument('-w_reconstr', type=float, default=1.0,
                     help='Weight of reconstruction loss')
 parser.add_argument('-w_classif', type=float, default=1.0,
                     help='Weight of classifier loss (cross-entropy)')
+parser.add_argument('-train_classifier', action='store_true',
+                    help='Train the classifier instead of reconstruction')
 
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,

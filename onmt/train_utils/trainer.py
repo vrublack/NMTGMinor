@@ -174,7 +174,7 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, complete_percent, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
         w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
@@ -262,7 +262,7 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                if complete_percent >= 0.9:
+                if opt.train_classifier:
                     self.model.set_trainable(False, False, True)
                     # train only classifier
                     loss_total, loss_reconstruction, loss_adv, classified_repr = \
@@ -378,8 +378,7 @@ class XETrainer(BaseTrainer):
             print('')
 
             #  (1) train for one epoch on the training set
-            complete_percent = (epoch - opt.start_epoch) / (opt.epochs)
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, complete_percent, resume=resume,
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

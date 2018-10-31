@@ -174,7 +174,7 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, complete_percent, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
         w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
@@ -262,8 +262,16 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                loss_total, loss_reconstruction, loss_adv, classified_repr = \
-                    train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_classif * loss_class)
+                if complete_percent >= 0.9:
+                    self.model.set_trainable(False, False, True)
+                    # train only classifier
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = \
+                        train_part(lambda loss_reconstr, loss_class: w_classif * loss_class)
+                else:
+                    self.model.set_trainable(True, True, False)
+                    # train only encoder + decoder
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = \
+                        train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr)
 
             except RuntimeError as e:
                 if 'out of memory' in str(e):
@@ -370,7 +378,8 @@ class XETrainer(BaseTrainer):
             print('')
 
             #  (1) train for one epoch on the training set
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, resume=resume,
+            complete_percent = (epoch - opt.start_epoch) / (opt.epochs)
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, complete_percent, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

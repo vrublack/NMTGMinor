@@ -32,8 +32,7 @@ class EnsembleTranslator(object):
         for i, model in enumerate(models):
             if opt.verbose:
                 print('Loading model from %s' % model)
-            checkpoint = torch.load(model,
-                               map_location=lambda storage, loc: storage)
+            checkpoint = torch.load(model, map_location='cpu')
                                
             model_opt = checkpoint['opt']
             
@@ -53,11 +52,7 @@ class EnsembleTranslator(object):
                 model = model.cuda()
             else:
                 model = model.cpu()
-            
-            model.eval()
 
-            model.decoder.set_active(opt.target_style - 1)
-            
             self.models.append(model)
             self.model_types.append(model_opt.model)
             
@@ -183,7 +178,6 @@ class EnsembleTranslator(object):
 
     def translateBatch(self, srcBatch, tgtBatch):
         
-        torch.set_grad_enabled(False)
         # Batch size is in different location depending on data.
 
         beamSize = self.opt.beam_size
@@ -196,14 +190,25 @@ class EnsembleTranslator(object):
         # tgtBatch should have size len x batch
         
         contexts = dict()
-        
+
         src = srcBatch.transpose(0, 1)
         
         #  (1) run the encoders on the src
         for i in range(self.n_models):
             contexts[i], src_mask = self.models[i].encoder(src)
-            
-                
+            contexts[i] = torch.autograd.Variable(contexts[i], requires_grad=True)
+            self.models[i].repr_classifier.cuda = False
+            classified_repr = self.models[i].repr_classifier(contexts[i])
+            modified_context = contexts[i]
+            for b in range(classified_repr.shape[0]):
+                classified_repr[b, 1].backward(retain_graph=True)
+                learning_rate = 30
+                modified_context = modified_context + learning_rate * contexts[i].grad
+                contexts[i].grad.zero_()
+
+            contexts[i] = modified_context
+
+
         goldScores = contexts[0].data.new(batchSize).zero_()
         goldWords = 0
         

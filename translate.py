@@ -65,6 +65,9 @@ parser.add_argument('-remove_bpe', action='store_true',
                     help='Remove bpe from translation')
 parser.add_argument('-diff', action='store_true',
                     help='Show diff between original and translation in each line')
+parser.add_argument('-lr', type=float, default=1.0,
+                    help="Gradient multiplier")
+
 
 
 def reportScore(name, scoreTotal, wordsTotal):
@@ -91,6 +94,9 @@ def translate(args):
 
     def postprocess(s):
         s = s.replace('&apos;', "'")
+
+        if len(s) == 0:
+            s = 'EMPTY'
 
         if opt.remove_bpe:
             return s.replace('@@ ', '')
@@ -153,68 +159,65 @@ def translate(args):
             if len(srcBatch) == 0:
                 break
 
-        for lr in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30]:
-            print('\n------------------------------------\nlr={}\n------------------------------------\n'.format(lr))
+        predBatch, predScore, predLength, goldScore, numGoldWords  = translator.translate(srcBatch,
+                                                                                    tgtBatch, opt.lr)
+        if opt.normalize:
+            predBatch_ = []
+            predScore_ = []
+            for bb, ss, ll in zip(predBatch, predScore, predLength):
+                #~ ss_ = [s_/numpy.maximum(1.,len(b_)) for b_,s_,l_ in zip(bb,ss,ll)]
+                ss_ = [len_penalty(s_, l_, opt.alpha) for b_,s_,l_ in zip(bb,ss,ll)]
+                ss_origin = [(s_, len(b_)) for b_,s_,l_ in zip(bb,ss,ll)]
+                sidx = numpy.argsort(ss_)[::-1]
+                #~ print(ss_, sidx, ss_origin)
+                predBatch_.append([bb[s] for s in sidx])
+                predScore_.append([ss_[s] for s in sidx])
+            predBatch = predBatch_
+            predScore = predScore_
 
-            predBatch, predScore, predLength, goldScore, numGoldWords  = translator.translate(srcBatch,
-                                                                                        tgtBatch, lr)
-            if opt.normalize:
-                predBatch_ = []
-                predScore_ = []
-                for bb, ss, ll in zip(predBatch, predScore, predLength):
-                    #~ ss_ = [s_/numpy.maximum(1.,len(b_)) for b_,s_,l_ in zip(bb,ss,ll)]
-                    ss_ = [len_penalty(s_, l_, opt.alpha) for b_,s_,l_ in zip(bb,ss,ll)]
-                    ss_origin = [(s_, len(b_)) for b_,s_,l_ in zip(bb,ss,ll)]
-                    sidx = numpy.argsort(ss_)[::-1]
-                    #~ print(ss_, sidx, ss_origin)
-                    predBatch_.append([bb[s] for s in sidx])
-                    predScore_.append([ss_[s] for s in sidx])
-                predBatch = predBatch_
-                predScore = predScore_
+        predScoreTotal += sum(score[0].item() for score in predScore)
+        predWordsTotal += sum(len(x[0]) for x in predBatch)
+        if tgtF is not None:
+            goldScoreTotal += sum(goldScore).item()
+            goldWordsTotal += numGoldWords.item()
 
-            predScoreTotal += sum(score[0].item() for score in predScore)
-            predWordsTotal += sum(len(x[0]) for x in predBatch)
-            if tgtF is not None:
-                goldScoreTotal += sum(goldScore).item()
-                goldWordsTotal += numGoldWords.item()
+        for b in range(len(predBatch)):
 
-            for b in range(len(predBatch)):
+            count += 1
 
-                count += 1
+            if not opt.print_nbest:
+                pred = predBatch[b][0]
+                src = srcBatch[b]
+                if opt.diff:
+                    outF.write(diff(postprocess(' '.join(src)), postprocess(" ".join(pred))) + '\n')
+                else:
+                    outF.write(postprocess(" ".join(pred)) + '\n')
 
-                if not opt.print_nbest:
-                    pred = predBatch[b][0]
-                    src = srcBatch[b]
-                    if opt.diff:
-                        outF.write(diff(postprocess(' '.join(src)), postprocess(" ".join(pred))) + '\n')
-                    else:
-                        outF.write(postprocess(" ".join(pred) + '\n'))
+                outF.flush()
 
-                    outF.flush()
+            if opt.verbose:
+                srcSent = ' '.join(srcBatch[b])
+                if translator.tgt_dict.lower:
+                    srcSent = srcSent.lower()
+                print('SENT %d: %s' % (count, srcSent))
+                print('PRED %d: %s' % (count, " ".join(predBatch[b][0])))
+                print("PRED SCORE: %.4f" %  predScore[b][0])
 
-                if opt.verbose:
-                    srcSent = ' '.join(srcBatch[b])
+                if tgtF is not None:
+                    tgtSent = ' '.join(tgtBatch[b])
                     if translator.tgt_dict.lower:
-                        srcSent = srcSent.lower()
-                    print('SENT %d: %s' % (count, srcSent))
-                    print('PRED %d: %s' % (count, " ".join(predBatch[b][0])))
-                    print("PRED SCORE: %.4f" %  predScore[b][0])
+                        tgtSent = tgtSent.lower()
+                    print('GOLD %d: %s ' % (count, tgtSent))
+                    print("GOLD SCORE: %.4f" % goldScore[b])
 
-                    if tgtF is not None:
-                        tgtSent = ' '.join(tgtBatch[b])
-                        if translator.tgt_dict.lower:
-                            tgtSent = tgtSent.lower()
-                        print('GOLD %d: %s ' % (count, tgtSent))
-                        print("GOLD SCORE: %.4f" % goldScore[b])
+                if opt.print_nbest:
+                    print('\nBEST HYP:')
+                    for n in range(opt.n_best):
+                        idx = n
+                        print("[%.4f] %s" % (predScore[b][idx],
+                            " ".join(predBatch[b][idx])))
 
-                    if opt.print_nbest:
-                        print('\nBEST HYP:')
-                        for n in range(opt.n_best):
-                            idx = n
-                            print("[%.4f] %s" % (predScore[b][idx],
-                                " ".join(predBatch[b][idx])))
-
-                    print('')
+                print('')
 
         srcBatch, tgtBatch = [], []
         

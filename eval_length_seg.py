@@ -69,7 +69,7 @@ for i in range(len(all_avgs[0][1])):
     smallest_len = all_avgs[0][1][i][0]
     print('{} --> '.format(smallest_len), end='')
     for lr_d in all_avgs:
-        print('({:.2f}, {:.2f}, {:.2f}), '.format(lr_d[1][i][1], lr_d[1][i][2], lr_d[1][i][3]), end='')
+        print('{}: {:.0f} & {:.1f}, '.format(lr_d[0], lr_d[1][i][1] * 10, lr_d[1][i][2]), end='')
     print('\n')
 
 print('Done.')

@@ -176,8 +176,8 @@ class EnsembleTranslator(object):
         
         return tokens
 
-    def translateBatch(self, srcBatch, tgtBatch):
-        
+    def translateBatch(self, srcBatch, tgtBatch, lr):
+
         # Batch size is in different location depending on data.
 
         beamSize = self.opt.beam_size
@@ -201,8 +201,8 @@ class EnsembleTranslator(object):
             classified_repr = self.models[i].repr_classifier(contexts[i])
             modified_context = contexts[i]
             for b in range(classified_repr.shape[0]):
-                classified_repr[b, 1].backward(retain_graph=True)
-                learning_rate = 30
+                classified_repr[b, self.opt.target_style - 1].backward(retain_graph=True)
+                learning_rate = lr
                 modified_context = modified_context + learning_rate * contexts[i].grad
                 contexts[i].grad.zero_()
 
@@ -355,7 +355,7 @@ class EnsembleTranslator(object):
 
         return allHyp, allScores, allAttn, allLengths, goldScores, goldWords
 
-    def translate(self, srcBatch, goldBatch):
+    def translate(self, srcBatch, goldBatch, lr):
         #  (1) convert words to indexes
         dataset = self.buildData(srcBatch, goldBatch)
         batch = self.to_variable(dataset.next()[0])
@@ -363,7 +363,7 @@ class EnsembleTranslator(object):
         batchSize = self._getBatchSize(src)
 
         #  (2) translate
-        pred, predScore, attn, predLength, goldScore, goldWords = self.translateBatch(src, tgt)
+        pred, predScore, attn, predLength, goldScore, goldWords = self.translateBatch(src, tgt, lr)
         
 
         #  (3) convert indexes to words

@@ -185,6 +185,21 @@ class XETrainer(BaseTrainer):
         w_reconstr, w_adv, w_classif = opt.w_reconstr, opt.w_adv, opt.w_classif
         trainData = self.trainData
 
+        if epoch <= opt.reconstr_headstart:
+            # train reconstruction without adversarial loss
+            self.model.set_trainable(True, True, False)
+            train_phase = 'headstart'
+        elif (epoch - opt.reconstr_headstart - 1) % (opt.reconstr_train_n + opt.classif_train_n) < opt.classif_train_n:
+            # train discriminator
+            self.model.set_trainable(False, False, True)
+            train_phase = 'discriminator'
+        else:
+            # train reconstruction with adversarial loss
+            self.model.set_trainable(True, True, False)
+            train_phase = 'reconstruction'
+
+        print('\nTraining phase: {}\n'.format(train_phase))
+
         # Clear the gradients of the model
         # self.runner.zero_grad()
         self.model.zero_grad()
@@ -272,16 +287,18 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                # train discriminator
-                self.model.set_trainable(False, False, True)
-                for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
-
-                # train generator
-                self.model.set_trainable(True, True, False)
-                for _ in range(opt.reconstr_train_n):
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
-
+                if train_phase == 'headstart':
+                    # train reconstruction without adversarial loss
+                    total_loss_f = lambda loss_reconstr, loss_class: w_reconstr * loss_reconstr
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(total_loss_f)
+                elif train_phase == 'reconstruction':
+                    # train reconstruction with adversarial loss
+                    total_loss_f = lambda loss_reconstr, loss_class: w_reconstr * loss_reconstr - w_adv * loss_class
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(total_loss_f)
+                elif train_phase == 'discriminator':
+                    # train discriminator
+                    total_loss_f = lambda loss_reconstr, loss_class: w_classif * loss_class
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(total_loss_f)
 
 
             except RuntimeError as e:

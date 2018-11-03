@@ -50,10 +50,13 @@ parser.add_argument('-w_adv', type=float, default=1.0,
                     help='Adversarial weight of classifier (cross-entropy)')
 parser.add_argument('-w_classif', type=float, default=1.0,
                     help='Weight of classifier loss (cross-entropy)')
-parser.add_argument('-adv_train_n', type=int, default=1,
-                    help='Number of iterations for which to train the discriminator during each mini-batch')
+parser.add_argument('-classif_train_n', type=int, default=50,
+                    help='How many consecutive epochs to train the classifier')
 parser.add_argument('-reconstr_train_n', type=int, default=1,
-                    help='Number of iterations for which to train the encoder and decoder during each mini-batch')
+                    help='How many consecutive epochs to train reconstruction with adversarial loss')
+parser.add_argument('-reconstr_headstart', type=int, default=10,
+                    help='How many epochs to train only reconstruction in the beginning')
+
 
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,

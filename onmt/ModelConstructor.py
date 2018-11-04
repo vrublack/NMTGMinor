@@ -67,7 +67,7 @@ def build_model(opt, dicts):
         
         generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
 
-        repr_classifier = RepresentationClassifier(opt, decoder_list, dicts['style1'], positional_encoder, opt.classifier_dim, opt.classifier_dropout)
+        repr_classifier = RepresentationClassifier(opt, dicts['style1'], positional_encoder, opt.classifier_dim, opt.classifier_dropout)
 
         model = Transformer(encoder, decoder, repr_classifier, generator)
         

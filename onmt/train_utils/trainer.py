@@ -179,26 +179,11 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, train_phase, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
         w_reconstr, w_adv, w_classif = opt.w_reconstr, opt.w_adv, opt.w_classif
         trainData = self.trainData
-
-        if epoch <= opt.reconstr_headstart:
-            # train reconstruction without adversarial loss
-            self.model.set_trainable(True, True, False)
-            train_phase = 'headstart'
-        elif (epoch - opt.reconstr_headstart - 1) % (opt.reconstr_train_n + opt.classif_train_n) < opt.classif_train_n:
-            # train discriminator
-            self.model.set_trainable(False, False, True)
-            train_phase = 'discriminator'
-        else:
-            # train reconstruction with adversarial loss
-            self.model.set_trainable(True, True, False)
-            train_phase = 'reconstruction'
-
-        print('\nTraining phase: {}\n'.format(train_phase))
 
         # Clear the gradients of the model
         # self.runner.zero_grad()
@@ -402,11 +387,34 @@ class XETrainer(BaseTrainer):
         best_train_loss = (None, None, None, None)
         best_val_loss = (None, None, None, None)
 
+        train_phase = ''
+
         for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
             print('')
 
+            if epoch <= opt.reconstr_headstart:
+                if train_phase != 'headstart':
+                    # train reconstruction without adversarial loss
+                    self.model.set_trainable(True, True, False)
+                    train_phase = 'headstart'
+            elif (epoch - opt.reconstr_headstart - 1) % (
+                    opt.reconstr_train_n + opt.classif_train_n) < opt.classif_train_n:
+                if train_phase != 'discriminator':
+                    # re-initialize with weights from reconstruction decoder
+                    self.model.repr_classifier.avg_weights(list(self.model.decoder.decoders))
+                    # train discriminator
+                    self.model.set_trainable(False, False, True)
+                    train_phase = 'discriminator'
+            else:
+                if train_phase != 'reconstruction':
+                    # train reconstruction with adversarial loss
+                    self.model.set_trainable(True, True, False)
+                    train_phase = 'reconstruction'
+
+            print('\nTraining phase: {}\n'.format(train_phase))
+
             #  (1) train for one epoch on the training set
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, resume=resume,
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, train_phase, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

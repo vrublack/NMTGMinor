@@ -9,7 +9,6 @@ from onmt.modules.WordDrop import embedded_dropout
 #~ from onmt.modules.Checkpoint import checkpoint
 from torch.utils.checkpoint import checkpoint
 from torch.autograd import Variable
-from style.Classifier import RepresentationClassifier
 
 from style.MultiDecoder import MultiDecoder
 
@@ -422,10 +421,10 @@ class TransformerDecoder(nn.Module):
 class Transformer(NMTModel):
     """Main model in 'Attention is all you need' """
 
-    def __init__(self, opt, encoder, decoder, generator=None):
+    def __init__(self, encoder, decoder, repr_classifier, generator=None):
         super(Transformer, self).__init__(encoder, decoder, generator)
 
-        self.repr_classifier = RepresentationClassifier(opt, encoder.model_size, opt.classifier_dim, opt.classifier_dropout)
+        self.repr_classifier = repr_classifier
 
 
     def forward(self, input, grow=False):
@@ -447,7 +446,7 @@ class Transformer(NMTModel):
 
         context, src_mask = self.encoder(src, grow=grow)
 
-        classified_repr = self.repr_classifier(context)
+        classified_repr = self.repr_classifier(tgt, context, src, grow=grow)
 
         if self.encoder.bottleneck_layer is not None:
             src = src[:, :1]

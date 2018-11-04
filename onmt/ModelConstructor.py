@@ -5,6 +5,7 @@ import onmt
 from onmt.modules.Transformer.Models import TransformerEncoder, TransformerDecoder, Transformer
 from onmt.modules.Transformer.Layers import PositionalEncoding
 from style.MultiDecoder import MultiDecoder
+from style.Classifier import RepresentationClassifier
 
 
 def build_model(opt, dicts):
@@ -60,12 +61,15 @@ def build_model(opt, dicts):
             #~ positional_encoder = nn.LSTM(opt.model_size, opt.model_size, 1, batch_first=True)
         
         encoder = TransformerEncoder(opt, dicts['style1'], positional_encoder)
-        decoder = MultiDecoder([TransformerDecoder(opt, dicts['style1'], positional_encoder),
-                               TransformerDecoder(opt, dicts['style1'], positional_encoder)])
+        decoder_list = [TransformerDecoder(opt, dicts['style1'], positional_encoder),
+                               TransformerDecoder(opt, dicts['style1'], positional_encoder)]
+        decoder = MultiDecoder(decoder_list)
         
         generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
-        
-        model = Transformer(opt, encoder, decoder, generator)
+
+        repr_classifier = RepresentationClassifier(opt, decoder_list, dicts['style1'], positional_encoder, opt.classifier_dim, opt.classifier_dropout)
+
+        model = Transformer(encoder, decoder, repr_classifier, generator)
         
         #~ print(encoder)
         

@@ -122,7 +122,7 @@ class XETrainer(BaseTrainer):
 
     def eval(self, data):
         opt = self.opt
-        w_reconstr, w_adv, w_classif = opt.w_reconstr, opt.w_adv, opt.w_classif
+        w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
 
         epoch_loss = 0
         epoch_loss_reconstruction = 0
@@ -152,7 +152,7 @@ class XETrainer(BaseTrainer):
                 else:
                     self.model.decoder.set_active(1)
 
-                outputs, classified_repr = self.model(batch)
+                outputs, classified_repr = self.model(batch, None)
                 targets = batch[1][1:]
                 targets_style = batch[2]
 
@@ -179,10 +179,19 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, p, resume=False, batchOrder=None, iteration=0):
+        """
+
+        :param epoch:
+        :param p: Percent of total training completed
+        :param resume:
+        :param batchOrder:
+        :param iteration:
+        :return:
+        """
 
         opt = self.opt
-        w_reconstr, w_adv, w_classif = opt.w_reconstr, opt.w_adv, opt.w_classif
+        w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
         trainData = self.trainData
 
         # Clear the gradients of the model
@@ -246,7 +255,10 @@ class XETrainer(BaseTrainer):
 
             try:
                 def train_part(total_loss_f):
-                    outputs, classified_repr = self.model(batch)
+                    # update learning rate according to "Unsupervised Domain Adaptation by Backpropagation" by Ganin et al
+                    lambd = 2. / (1. + np.exp(-10. * p)) - 1
+
+                    outputs, classified_repr = self.model(batch, lambd)
 
                     tgt_mask = targets.data.ne(onmt.Constants.PAD)
                     tgt_size = tgt_mask.sum()
@@ -272,16 +284,9 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                # train discriminator
-                self.model.set_trainable(False, False, True)
-                for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
-
-                # train generator
-                self.model.set_trainable(True, True, False)
-                for _ in range(opt.reconstr_train_n):
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr - w_adv * loss_class)
-
+                # train everything at once
+                loss_total, loss_reconstruction, loss_adv, classified_repr = \
+                    train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_classif * loss_class)
 
 
             except RuntimeError as e:
@@ -389,7 +394,8 @@ class XETrainer(BaseTrainer):
             print('')
 
             #  (1) train for one epoch on the training set
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, resume=resume,
+            p = (epoch - opt.start_epoch) / opt.epochs
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, p, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

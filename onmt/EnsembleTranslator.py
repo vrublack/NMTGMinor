@@ -176,7 +176,7 @@ class EnsembleTranslator(object):
         
         return tokens
 
-    def translateBatch(self, srcBatch, tgtBatch, lr):
+    def translateBatch(self, rawSrcBatch, srcBatch, tgtBatch, lr):
 
         # Batch size is in different location depending on data.
 
@@ -192,6 +192,27 @@ class EnsembleTranslator(object):
         contexts = dict()
 
         src = srcBatch.transpose(0, 1)
+
+        def auto_lr(raw_sent):
+            len_wo_bpe = len(' '.join(raw_sent).replace('@@ ', ''))
+            if len_wo_bpe <= 15:
+                return 30
+            elif len_wo_bpe <= 25:
+                return 6
+            elif len_wo_bpe <= 35:
+                return 2
+            elif len_wo_bpe <= 45:
+                return 2
+            elif len_wo_bpe <= 55:
+                return 1
+            elif len_wo_bpe <= 65:
+                return 2
+            elif len_wo_bpe <= 75:
+                return 1.5
+            elif len_wo_bpe <= 85:
+                return 2.5
+            else:
+                return 2.5
         
         #  (1) run the encoders on the src
         for i in range(self.n_models):
@@ -202,7 +223,10 @@ class EnsembleTranslator(object):
             modified_context = contexts[i]
             for b in range(classified_repr.shape[0]):
                 classified_repr[b, self.opt.target_style - 1].backward(retain_graph=True)
-                learning_rate = lr
+                if lr is None:
+                    learning_rate = auto_lr(rawSrcBatch[b])
+                else:
+                    learning_rate = lr
                 modified_context = modified_context + learning_rate * contexts[i].grad
                 contexts[i].grad.zero_()
 
@@ -363,7 +387,7 @@ class EnsembleTranslator(object):
         batchSize = self._getBatchSize(src)
 
         #  (2) translate
-        pred, predScore, attn, predLength, goldScore, goldWords = self.translateBatch(src, tgt, lr)
+        pred, predScore, attn, predLength, goldScore, goldWords = self.translateBatch(srcBatch, src, tgt, lr)
         
 
         #  (3) convert indexes to words

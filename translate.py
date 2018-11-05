@@ -65,8 +65,8 @@ parser.add_argument('-remove_bpe', action='store_true',
                     help='Remove bpe from translation')
 parser.add_argument('-diff', action='store_true',
                     help='Show diff between original and translation in each line')
-parser.add_argument('-lr', type=float, default=1.0,
-                    help="Gradient multiplier")
+parser.add_argument('-lr', type=float, default=None,
+                    help="Gradient multiplier. Auto when not specified")
 
 
 

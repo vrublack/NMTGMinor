@@ -263,7 +263,7 @@ class XETrainer(BaseTrainer):
             try:
                 def train_part(total_loss_f):
                     # update learning rate according to "Unsupervised Domain Adaptation by Backpropagation" by Ganin et al
-                    lambd = 2. / (1. + np.exp(-10. * p)) - 1
+                    lambd = 2. / (1. + np.exp(-opt.adapt_gamma * p)) - 1
 
                     outputs, classified_repr = self.model(batch, lambd)
 

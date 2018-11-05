@@ -51,6 +51,8 @@ parser.add_argument('-w_classif', type=float, default=1.0,
 parser.add_argument('-classif_check_ep', type=int, default=0,
                     help='Number of epochs at the end to train only the classifier to see how much '
                          'style the content representation still contains')
+parser.add_argument('-adapt_gamma', type=float, default=10.0,
+                    help='The higher, the faster lambda for the adversarial training increases.')
 
 
 # Recurrent Model options

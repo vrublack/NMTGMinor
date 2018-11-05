@@ -179,7 +179,7 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, p, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, p, classif_only, resume=False, batchOrder=None, iteration=0):
         """
 
         :param epoch:
@@ -189,6 +189,13 @@ class XETrainer(BaseTrainer):
         :param iteration:
         :return:
         """
+
+        if classif_only:
+            print('Only training classifier')
+            self.model.set_trainable(False, False, True)
+        else:
+            # train everything at once
+            self.model.set_trainable(True, True, True)
 
         opt = self.opt
         w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
@@ -284,9 +291,13 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
-                # train everything at once
-                loss_total, loss_reconstruction, loss_adv, classified_repr = \
-                    train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_classif * loss_class)
+                if classif_only:
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = \
+                        train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
+                else:
+                    # train everything at once
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = \
+                        train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_classif * loss_class)
 
 
             except RuntimeError as e:
@@ -390,12 +401,13 @@ class XETrainer(BaseTrainer):
         best_train_loss = (None, None, None, None)
         best_val_loss = (None, None, None, None)
 
-        for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
+        for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs + opt.classif_check_ep):
             print('')
 
             #  (1) train for one epoch on the training set
             p = (epoch - opt.start_epoch) / opt.epochs
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, p, resume=resume,
+            classif_only = epoch >= opt.start_epoch + opt.epochs
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, p, classif_only, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

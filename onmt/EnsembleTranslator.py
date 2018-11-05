@@ -193,26 +193,47 @@ class EnsembleTranslator(object):
 
         src = srcBatch.transpose(0, 1)
 
-        def auto_lr(raw_sent):
+        def auto_lr(raw_sent, target):
             len_wo_bpe = len(' '.join(raw_sent).replace('@@ ', ''))
-            if len_wo_bpe <= 15:
-                return 30
-            elif len_wo_bpe <= 25:
-                return 6
-            elif len_wo_bpe <= 35:
-                return 2
-            elif len_wo_bpe <= 45:
-                return 2
-            elif len_wo_bpe <= 55:
-                return 1
-            elif len_wo_bpe <= 65:
-                return 2
-            elif len_wo_bpe <= 75:
-                return 1.5
-            elif len_wo_bpe <= 85:
-                return 2.5
+            if target == 2:
+                if len_wo_bpe <= 15:
+                    return 9
+                elif len_wo_bpe <= 25:
+                    return 6
+                elif len_wo_bpe <= 35:
+                    return 4
+                elif len_wo_bpe <= 45:
+                    return 3
+                elif len_wo_bpe <= 55:
+                    return 3
+                elif len_wo_bpe <= 65:
+                    return 2.5
+                elif len_wo_bpe <= 75:
+                    return 2
+                elif len_wo_bpe <= 85:
+                    return 2
+                else:
+                    return 2
             else:
-                return 2.5
+                if len_wo_bpe <= 15:
+                    return 30
+                elif len_wo_bpe <= 25:
+                    return 6
+                elif len_wo_bpe <= 35:
+                    return 2
+                elif len_wo_bpe <= 45:
+                    return 2
+                elif len_wo_bpe <= 55:
+                    return 1
+                elif len_wo_bpe <= 65:
+                    return 2
+                elif len_wo_bpe <= 75:
+                    return 1.5
+                elif len_wo_bpe <= 85:
+                    return 2.5
+                else:
+                    return 2.5
+
         
         #  (1) run the encoders on the src
         for i in range(self.n_models):
@@ -224,7 +245,7 @@ class EnsembleTranslator(object):
             for b in range(classified_repr.shape[0]):
                 classified_repr[b, self.opt.target_style - 1].backward(retain_graph=True)
                 if lr is None:
-                    learning_rate = auto_lr(rawSrcBatch[b])
+                    learning_rate = auto_lr(rawSrcBatch[b], self.opt.target_style - 1)
                 else:
                     learning_rate = lr
                 modified_context = modified_context + learning_rate * contexts[i].grad

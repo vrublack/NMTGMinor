@@ -400,8 +400,9 @@ class XETrainer(BaseTrainer):
             elif (epoch - opt.reconstr_headstart - 1) % (
                     opt.reconstr_train_n + opt.classif_train_n) < opt.classif_train_n:
                 if train_phase != 'discriminator':
-                    # re-initialize with weights from reconstruction decoder
-                    self.model.repr_classifier.avg_weights(list(self.model.decoder.decoders))
+                    if not opt.no_avg:
+                        # re-initialize with weights from reconstruction decoder
+                        self.model.repr_classifier.avg_weights(list(self.model.decoder.decoders))
                     # train discriminator
                     self.model.set_trainable(False, False, True)
                     train_phase = 'discriminator'

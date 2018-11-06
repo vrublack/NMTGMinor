@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-log_fname = '/Users/valentin/BThesis/log/' + sys.argv[1]
+log_fname = '/Users/valentin/BThesis/log/' + input('Enter log filename: ')
 
 with open(log_fname) as f:
     log = f.read()
@@ -24,7 +24,7 @@ plt.plot(x_range, reconstr_val, label='Reconstr ppl val')
 plt.plot(x_range, acc_train, label='Acc train')
 plt.plot(x_range, acc_val, label='Acc val')
 
-plt.ylim(0, 1.5)
+plt.ylim(0, 2.5)
 plt.grid(True)
 
 plt.xlabel('Epoch')

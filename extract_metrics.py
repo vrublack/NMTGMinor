@@ -4,34 +4,47 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
 
-log_fname = '/Users/valentin/BThesis/log/' + input('Enter log filename: ')
 
-with open(log_fname) as f:
-    log = f.read()
+lines = []
+while True:
+    line = input()
+    if line:
+        lines.append(line)
+    else:
+        break
 
-matches = re.findall(r'(?<=Reconstruction ppl: )(\d+\.\d+)', log)
-reconstr_train = [float(s) for s in matches[1::2]]
-reconstr_val = [float(s) for s in matches[2::2]]
+for fname in lines:
 
-matches = re.findall(r'(?<=accuracy: )(\d+\.\d+)', log)
-acc_train = [float(s) for s in matches[1::2]]
-acc_val = [float(s) for s in matches[2::2]]
+    log_fname = '/Users/valentin/BThesis/log/' + fname
 
-x_range = np.arange(1, len(reconstr_val) + 1)
+    with open(log_fname) as f:
+        log = f.read()
 
-plt.plot(x_range, reconstr_train, label='Reconstr ppl train')
-plt.plot(x_range, reconstr_val, label='Reconstr ppl val')
-plt.plot(x_range, acc_train, label='Acc train')
-plt.plot(x_range, acc_val, label='Acc val')
+    matches = re.findall(r'(?<=accuracy: )(\d+\.\d+)', log)
+    acc_train = [float(s) for s in matches[1::2]]
+    acc_val = [float(s) for s in matches[2::2]]
 
-plt.ylim(0, 2.5)
-plt.grid(True)
+    matches = re.findall(r'(?<=Reconstruction ppl: )(\d+\.\d+)', log)
+    if 'BEST RESULTS:' in log:
+        matches = matches[:-2]
+    reconstr_train = [float(s) for s in matches[1::2]]
+    reconstr_val = [float(s) for s in matches[2::2]]
 
-plt.xlabel('Epoch')
-plt.ylabel('Score')
+    x_range = np.arange(1, len(reconstr_val) + 1)
 
-plt.title(Path(log_fname).name)
+    plt.plot(x_range, reconstr_train, label='Reconstr ppl train')
+    plt.plot(x_range, reconstr_val, label='Reconstr ppl val')
+    plt.plot(x_range, acc_train, label='Acc train')
+    plt.plot(x_range, acc_val, label='Acc val')
 
-plt.legend()
+    plt.ylim(0, 1.5)
+    plt.grid(True)
 
-plt.show()
+    plt.xlabel('Epoch')
+    plt.ylabel('Score')
+
+    plt.title(Path(log_fname).name)
+
+    plt.legend()
+
+    plt.show()

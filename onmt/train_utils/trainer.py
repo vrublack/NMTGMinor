@@ -13,6 +13,8 @@ import math
 import time, datetime
 import random
 import numpy as np
+
+from grad_utils import plot_grad_flow
 from onmt.multiprocessing.multiprocessing_wrapper import MultiprocessingRunner
 from onmt.ModelConstructor import init_model_parameters
 from onmt.train_utils.loss import HLoss
@@ -276,6 +278,10 @@ class XETrainer(BaseTrainer):
                     loss_adv = self.adv_loss_function(classified_repr, targets_style)
                     loss_total = total_loss_f(loss_reconstruction, loss_adv)
                     loss_total.backward()
+
+                    if i <= 1:  # only show for first two batches in epoch
+                        plot_grad_flow(self.model.named_parameters(), '{}_ep_{}_it_{}_{}.png'.format(opt.save_grad, epoch, i, train_phase),
+                                       '{}_ep_{}_it_{}_{}.csv'.format(opt.save_grad, epoch, i, train_phase))
 
                     # update parameters immediately
                     self.optim.step(grad_denom=1)

@@ -13,6 +13,8 @@ import math
 import time, datetime
 import random
 import numpy as np
+
+from grad_utils import plot_grad_flow
 from onmt.multiprocessing.multiprocessing_wrapper import MultiprocessingRunner
 from onmt.ModelConstructor import init_model_parameters
 from onmt.train_utils.loss import HLoss
@@ -250,7 +252,7 @@ class XETrainer(BaseTrainer):
             batch_size = targets.size(1)
 
             try:
-                def train_part(total_loss_f):
+                def train_part(total_loss_f, phase):
                     outputs, classified_repr = self.model(batch)
 
                     tgt_mask = targets.data.ne(onmt.Constants.PAD)
@@ -271,6 +273,10 @@ class XETrainer(BaseTrainer):
                     loss_total = total_loss_f(loss_reconstruction, loss_adv)
                     loss_total.backward()
 
+                    if i <= 1:  # only show for first two batches in epoch
+                        plot_grad_flow(self.model.named_parameters(), '{}_ep_{}_it_{}_{}.png'.format(opt.save_grad, epoch, i, phase),
+                                       '{}_ep_{}_it_{}_{}.csv'.format(opt.save_grad, epoch, i, phase))
+
                     # update parameters immediately
                     self.optim.step(grad_denom=1)
                     self.model.zero_grad()
@@ -280,17 +286,17 @@ class XETrainer(BaseTrainer):
                 # train classifier
                 self.model.set_trainable(False, False, True)
                 for _ in range(opt.classif_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
+                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class, 'classif')
 
                 # train encoder to make classifier worse
                 self.model.set_trainable(True, False, False)
                 for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : -w_adv * loss_class)
+                    _ = train_part(lambda loss_reconstr, loss_class : -w_adv * loss_class, 'adv')
 
                 # train reconstruction
                 self.model.set_trainable(True, True, False)
                 for _ in range(opt.reconstr_train_n):
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr)
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr, 'reconstr')
 
 
 

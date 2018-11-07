@@ -122,7 +122,9 @@ class XETrainer(BaseTrainer):
 
     def eval(self, data):
         opt = self.opt
-        w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
+        weight_sum = opt.w_reconstr + opt.w_classif
+        # normalize weights
+        w_reconstr, w_classif = opt.w_reconstr / weight_sum, opt.w_classif / weight_sum
 
         epoch_loss = 0
         epoch_loss_reconstruction = 0
@@ -198,7 +200,9 @@ class XETrainer(BaseTrainer):
             self.model.set_trainable(True, True, True)
 
         opt = self.opt
-        w_reconstr, w_classif = opt.w_reconstr, opt.w_classif
+        weight_sum = opt.w_reconstr + opt.w_classif
+        # normalize weights
+        w_reconstr, w_classif = opt.w_reconstr / weight_sum, opt.w_classif / weight_sum
         trainData = self.trainData
 
         # Clear the gradients of the model

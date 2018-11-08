@@ -38,7 +38,7 @@ parser.add_argument('-layers', type=int, default=2,
                     help='Number of layers in the LSTM encoder/decoder')
 parser.add_argument('-translate_src', default=None, type=str,
                     help='Print sample translation every time the model is saved, if specified.')
-parser.add_argument('-save_grad', type=str, required=True,
+parser.add_argument('-save_grad', type=str, default=None,
                     help='Saves gradient graph and data to this file + epoch.')
 
 # Adversarial options

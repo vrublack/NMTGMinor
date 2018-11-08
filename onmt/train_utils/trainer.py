@@ -183,7 +183,7 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, only_classifier, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
         wsum = opt.w_reconstr + opt.w_adv + opt.w_classif
@@ -286,17 +286,18 @@ class XETrainer(BaseTrainer):
                 # train classifier
                 self.model.set_trainable(False, False, True)
                 for _ in range(opt.classif_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class, 'classif')
+                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_classif * loss_class, 'classif')
 
-                # train encoder to make classifier worse
-                self.model.set_trainable(True, False, False)
-                for _ in range(opt.adv_train_n):
-                    _ = train_part(lambda loss_reconstr, loss_class : -w_adv * loss_class, 'adv')
+                if not only_classifier:
+                    # train encoder to make classifier worse
+                    self.model.set_trainable(True, False, False)
+                    for _ in range(opt.adv_train_n):
+                        loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : -w_adv * loss_class, 'adv')
 
-                # train reconstruction
-                self.model.set_trainable(True, True, False)
-                for _ in range(opt.reconstr_train_n):
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr, 'reconstr')
+                    # train reconstruction
+                    self.model.set_trainable(True, True, False)
+                    for _ in range(opt.reconstr_train_n):
+                        loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr, 'reconstr')
 
 
 
@@ -401,11 +402,13 @@ class XETrainer(BaseTrainer):
         best_train_loss = (None, None, None, None)
         best_val_loss = (None, None, None, None)
 
-        for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
+        for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs + opt.classif_check_ep):
             print('')
 
+
             #  (1) train for one epoch on the training set
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, resume=resume,
+            classif_only = epoch >= opt.start_epoch + opt.epochs
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, classif_only, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

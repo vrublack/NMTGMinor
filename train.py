@@ -58,6 +58,9 @@ parser.add_argument('-adv_train_n', type=int, default=1,
                     help='Number of iterations for which to train the encoder to make the classifier worse during each mini-batch')
 parser.add_argument('-reconstr_train_n', type=int, default=1,
                     help='Number of iterations for which to train the encoder and decoder during each mini-batch')
+parser.add_argument('-classif_check_ep', type=int, default=0,
+                    help='Number of epochs at the end to train only the classifier to see how much '
+                         'style the content representation still contains')
 
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,

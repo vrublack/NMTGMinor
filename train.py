@@ -58,7 +58,10 @@ parser.add_argument('-reconstr_headstart', type=int, default=10,
                     help='How many epochs to train only reconstruction in the beginning')
 parser.add_argument('-no_avg', action='store_true',
                     help="Don't re-initialize classifier decoder weights upon entering phase 2")
-
+parser.add_argument('-classif_inner_size', type=int, default=-1,
+                    help='Size of inner feed forward layer in classifier')
+parser.add_argument('-classif_layers', type=int, default=-1,
+                    help='Number of layers in classifier')
 
 
 # Recurrent Model options

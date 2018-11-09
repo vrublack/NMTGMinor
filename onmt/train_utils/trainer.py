@@ -274,8 +274,8 @@ class XETrainer(BaseTrainer):
                     loss_total.backward()
 
                     if i <= 1 and opt.save_grad is not None:  # only show for first two batches in epoch
-                        plot_grad_flow(self.model.named_parameters(), '{}_ep_{}_it_{}_{}.png'.format(opt.save_grad, epoch, i, phase),
-                                       '{}_ep_{}_it_{}_{}.csv'.format(opt.save_grad, epoch, i, phase))
+                        base_fname = '{}_ep_{}_it_{}_{}_lrec_{:.2f}_ladv_{:.2f}'.format(opt.save_grad, epoch, i, phase, loss_reconstruction, loss_adv)
+                        plot_grad_flow(self.model.named_parameters(), base_fname + '.png', base_fname + '.csv')
 
                     # update parameters immediately
                     self.optim.step(grad_denom=1)

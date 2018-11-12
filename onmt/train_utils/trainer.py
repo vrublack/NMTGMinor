@@ -389,6 +389,16 @@ class XETrainer(BaseTrainer):
 
         train_phase = ''
 
+        def disc_train_len(nth_disc_phase):
+            if nth_disc_phase >= 6:
+                return 2
+            else:
+                return {0: 50, 1: 10, 2: 7, 3: 5, 4: 3, 5: 2}[nth_disc_phase]
+
+        disc_phases = 0
+        remaining_dis = disc_train_len(disc_phases)
+        remaining_rec = 0
+
         for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
             print('')
 
@@ -397,8 +407,7 @@ class XETrainer(BaseTrainer):
                     # train reconstruction without adversarial loss
                     self.model.set_trainable(True, True, False)
                     train_phase = 'headstart'
-            elif (epoch - opt.reconstr_headstart - 1) % (
-                    opt.reconstr_train_n + opt.classif_train_n) < opt.classif_train_n:
+            elif remaining_dis > 0:
                 if train_phase != 'discriminator':
                     if not opt.no_avg:
                         # re-initialize with weights from reconstruction decoder
@@ -406,11 +415,21 @@ class XETrainer(BaseTrainer):
                     # train discriminator
                     self.model.set_trainable(False, False, True)
                     train_phase = 'discriminator'
+                remaining_dis -= 1
+                if remaining_dis == 0:
+                    # switch to rec in next epoch
+                    remaining_rec = opt.reconstr_train_n
             else:
                 if train_phase != 'reconstruction':
                     # train reconstruction with adversarial loss
                     self.model.set_trainable(True, True, False)
                     train_phase = 'reconstruction'
+                remaining_rec -= 1
+                if remaining_rec == 0:
+                    # switch to disc in next epoch
+                    disc_phases += 1
+                    remaining_dis = disc_train_len(disc_phases)
+
 
             print('\nTraining phase: {}\n'.format(train_phase))
 

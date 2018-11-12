@@ -283,6 +283,12 @@ class XETrainer(BaseTrainer):
 
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
+                if not only_classifier:
+                    # train reconstruction
+                    self.model.set_trainable(True, True, False)
+                    for _ in range(opt.reconstr_train_n):
+                        loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr, 'reconstr')
+
                 # train classifier
                 self.model.set_trainable(False, False, True)
                 for _ in range(opt.classif_train_n):
@@ -293,12 +299,6 @@ class XETrainer(BaseTrainer):
                     self.model.set_trainable(True, False, False)
                     for _ in range(opt.adv_train_n):
                         loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : -w_adv * loss_class, 'adv')
-
-                    # train reconstruction
-                    self.model.set_trainable(True, True, False)
-                    for _ in range(opt.reconstr_train_n):
-                        loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr, 'reconstr')
-
 
 
             except RuntimeError as e:

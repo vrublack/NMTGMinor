@@ -61,6 +61,11 @@ parser.add_argument('-classif_inner_size', type=int, default=-1,
 parser.add_argument('-classif_layers', type=int, default=-1,
                     help='Number of layers in classifier')
 
+parser.add_argument('-adapt_gamma', type=float, default=10.0,
+                    help='The higher, the faster lambda for the adversarial training increases.')
+parser.add_argument('-adapt_alpha', type=float, default=1.0,
+                    help='Factor for adversarial training. The higher, the worse the classifier should become.')
+
 
 # Recurrent Model options
 parser.add_argument('-rnn_size', type=int, default=512,

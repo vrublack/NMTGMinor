@@ -427,7 +427,7 @@ class Transformer(NMTModel):
         self.repr_classifier = repr_classifier
 
 
-    def forward(self, input, grow=False):
+    def forward(self, input, lambd, grow=False):
         """
         Inputs Shapes: 
             src: len_src x batch_size
@@ -435,7 +435,8 @@ class Transformer(NMTModel):
         
         Outputs Shapes:
             out:      batch_size*len_tgt x model_size
-            
+
+        :param lambd Lambda for the GradReverse layer in classifier
             
         """
         src = input[0]
@@ -446,7 +447,7 @@ class Transformer(NMTModel):
 
         context, src_mask = self.encoder(src, grow=grow)
 
-        classified_repr = self.repr_classifier(tgt, context, src, grow=grow)
+        classified_repr = self.repr_classifier(tgt, context, src, lambd, grow=grow)
 
         if self.encoder.bottleneck_layer is not None:
             src = src[:, :1]

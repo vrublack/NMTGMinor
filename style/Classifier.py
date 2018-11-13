@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.functional import log_softmax
+from style.GradReverse import grad_reverse
+
+from onmt.modules.Transformer import TransformerDecoder
+
 
 from onmt.modules.Transformer import TransformerDecoder
 
@@ -43,8 +47,11 @@ class RepresentationClassifier(nn.Module):
         else:
             return h, c
 
-    def forward(self, tgt, context, src, grow=False):
-        x, _ = self.decoder(tgt, context, src, grow=grow)
+    def forward(self, tgt, context, src, lambd, grow=False):
+
+        x = grad_reverse(context, lambd)
+
+        x, _ = self.decoder(tgt, x, src, grow=grow)
 
         # input: (batch x seq_len x input_size) but expected (seq_len x batch x input_size)
         x = x.transpose(0, 1)

@@ -154,7 +154,7 @@ class XETrainer(BaseTrainer):
                 else:
                     self.model.decoder.set_active(1)
 
-                outputs, classified_repr = self.model(batch)
+                outputs, classified_repr = self.model(batch, None)
                 targets = batch[1][1:]
                 targets_style = batch[2]
 
@@ -181,7 +181,7 @@ class XETrainer(BaseTrainer):
         return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
                epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
 
-    def train_epoch(self, epoch, train_phase, resume=False, batchOrder=None, iteration=0):
+    def train_epoch(self, epoch, train_phase, p, resume=False, batchOrder=None, iteration=0):
 
         opt = self.opt
         weight_sum = opt.w_reconstr + opt.w_adv + opt.w_classif
@@ -250,7 +250,14 @@ class XETrainer(BaseTrainer):
 
             try:
                 def train_part(total_loss_f):
-                    outputs, classified_repr = self.model(batch)
+                    if p <= 1:
+                        # update learning rate according to "Unsupervised Domain Adaptation by Backpropagation" by Ganin et al
+                        lambd = opt.adapt_alpha * (2. / (1. + np.exp(-opt.adapt_gamma * p)) - 1)
+                    else:
+                        # disable grad reversal
+                        lambd = -1
+
+                    outputs, classified_repr = self.model(batch, lambd)
 
                     tgt_mask = targets.data.ne(onmt.Constants.PAD)
                     tgt_size = tgt_mask.sum()
@@ -406,6 +413,8 @@ class XETrainer(BaseTrainer):
         for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
             print('')
 
+            p = (epoch - opt.start_epoch + 1) / opt.reconstr_headstart
+
             if epoch <= opt.reconstr_headstart:
                 if train_phase != 'headstart':
                     self.model.set_trainable(True, True, True)
@@ -437,7 +446,7 @@ class XETrainer(BaseTrainer):
             print('\nTraining phase: {}\n'.format(train_phase))
 
             #  (1) train for one epoch on the training set
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, train_phase, resume=resume,
+            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, train_phase, p, resume=resume,
                                                                 batchOrder=batchOrder,
                                                                 iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))

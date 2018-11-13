@@ -250,12 +250,8 @@ class XETrainer(BaseTrainer):
 
             try:
                 def train_part(total_loss_f):
-                    if p <= 1:
-                        # update learning rate according to "Unsupervised Domain Adaptation by Backpropagation" by Ganin et al
-                        lambd = opt.adapt_alpha * (2. / (1. + np.exp(-opt.adapt_gamma * p)) - 1)
-                    else:
-                        # disable grad reversal
-                        lambd = -1
+                    # update learning rate according to "Unsupervised Domain Adaptation by Backpropagation" by Ganin et al
+                    lambd = opt.adapt_alpha * (2. / (1. + np.exp(-opt.adapt_gamma * p)) - 1)
 
                     outputs, classified_repr = self.model(batch, lambd)
 
@@ -414,6 +410,7 @@ class XETrainer(BaseTrainer):
             print('')
 
             p = (epoch - opt.start_epoch + 1) / opt.reconstr_headstart
+            p = min(p, 1.0)
 
             if epoch <= opt.reconstr_headstart:
                 if train_phase != 'headstart':
@@ -425,7 +422,7 @@ class XETrainer(BaseTrainer):
                         # re-initialize with weights from reconstruction decoder
                         self.model.repr_classifier.avg_weights(list(self.model.decoder.decoders))
                     # train discriminator
-                    self.model.set_trainable(False, False, True)
+                    self.model.set_trainable(True, False, True)
                     train_phase = 'discriminator'
                 remaining_dis -= 1
                 if remaining_dis == 0:

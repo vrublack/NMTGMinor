@@ -277,8 +277,8 @@ class XETrainer(BaseTrainer):
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
                 if train_phase == 'headstart':
-                    # train reconstruction without adversarial loss
-                    total_loss_f = lambda loss_reconstr, loss_class: w_reconstr * loss_reconstr
+                    # make reconstruction and classifier better
+                    total_loss_f = lambda loss_reconstr, loss_class: w_reconstr * loss_reconstr + w_classif * loss_class
                     loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(total_loss_f)
                 elif train_phase == 'reconstruction':
                     # train reconstruction with adversarial loss
@@ -394,10 +394,10 @@ class XETrainer(BaseTrainer):
         train_phase = ''
 
         def disc_train_len(nth_disc_phase):
-            if nth_disc_phase >= 6:
+            if nth_disc_phase >= 5:
                 return 2
             else:
-                return {0: 50, 1: 10, 2: 7, 3: 5, 4: 3, 5: 2}[nth_disc_phase]
+                return {0: 10, 1: 7, 2: 5, 3: 3, 4: 2}[nth_disc_phase]
 
         disc_phases = 0
         remaining_dis = disc_train_len(disc_phases)
@@ -408,8 +408,7 @@ class XETrainer(BaseTrainer):
 
             if epoch <= opt.reconstr_headstart:
                 if train_phase != 'headstart':
-                    # train reconstruction without adversarial loss
-                    self.model.set_trainable(True, True, False)
+                    self.model.set_trainable(True, True, True)
                     train_phase = 'headstart'
             elif remaining_dis > 0:
                 if train_phase != 'discriminator':

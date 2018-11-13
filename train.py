@@ -53,7 +53,7 @@ parser.add_argument('-w_classif', type=float, default=1.0,
 parser.add_argument('-reconstr_train_n', type=int, default=1,
                     help='How many consecutive epochs to train reconstruction with adversarial loss')
 parser.add_argument('-reconstr_headstart', type=int, default=10,
-                    help='How many epochs to train only reconstruction in the beginning')
+                    help='How many epochs to train reconstruction together with classification (cooperative) in the beginning')
 parser.add_argument('-no_avg', action='store_true',
                     help="Don't re-initialize classifier decoder weights upon entering phase 2")
 parser.add_argument('-classif_inner_size', type=int, default=-1,

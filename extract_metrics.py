@@ -30,7 +30,15 @@ for fname in lines:
     reconstr_train = [float(s) for s in matches[1::2]]
     reconstr_val = [float(s) for s in matches[2::2]]
 
-    x_range = np.arange(1, len(reconstr_val) + 1)
+    # job might not be finished so one result was written but another one not yet
+    min_len = min(len(reconstr_val), len(reconstr_train), len(acc_train), len(acc_val))
+    del reconstr_train[min_len:]
+    del reconstr_val[min_len:]
+    del acc_train[min_len:]
+    del acc_val[min_len:]
+
+
+    x_range = np.arange(1, min_len + 1)
 
     plt.plot(x_range, reconstr_train, label='Reconstr ppl train')
     plt.plot(x_range, reconstr_val, label='Reconstr ppl val')

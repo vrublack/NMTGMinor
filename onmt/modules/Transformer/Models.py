@@ -447,10 +447,10 @@ class Transformer(NMTModel):
 
         context, src_mask = self.encoder(src, grow=grow)
 
-        classified_repr = self.repr_classifier(tgt, context, src, lambd, grow=grow)
-
         if self.encoder.bottleneck_layer is not None:
             src = src[:, :1]
+
+        classified_repr = self.repr_classifier(tgt, context, src, lambd, grow=grow)
 
         output, coverage = self.decoder(tgt, context, src, grow=grow)
         

@@ -93,9 +93,12 @@ def translate(args):
         s = s.replace('&apos;', "'")
 
         if opt.remove_bpe:
-            return s.replace('@@ ', '')
-        else:
-            return s
+            s = s.replace('@@ ', '')
+
+        if s == '\n':
+            s = 'EMPTY\n'
+
+        return s
 
     def diff(source, changed):
         import difflib

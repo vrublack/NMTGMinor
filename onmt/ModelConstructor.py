@@ -5,7 +5,6 @@ import onmt
 from onmt.modules.Transformer.Models import TransformerEncoder, TransformerDecoder, Transformer
 from onmt.modules.Transformer.Layers import PositionalEncoding
 from style.MultiDecoder import MultiDecoder
-from style.Classifier import RepresentationClassifier
 
 
 def build_model(opt, dicts):
@@ -67,15 +66,7 @@ def build_model(opt, dicts):
         
         generator = onmt.modules.BaseModel.Generator(opt.model_size, dicts['style1'].size())
 
-        opt_repr_decoder = copy.deepcopy(opt)
-        # model_size has to be the same
-        if opt_repr_decoder.classif_inner_size != -1:
-            opt_repr_decoder.inner_size = opt_repr_decoder.classif_inner_size
-        if opt_repr_decoder.classif_layers != -1:
-            opt_repr_decoder.layers = opt_repr_decoder.classif_layers
-        repr_classifier = RepresentationClassifier(opt_repr_decoder, dicts['style1'], positional_encoder, opt.classifier_dim, opt.classifier_dropout)
-
-        model = Transformer(encoder, decoder, repr_classifier, generator)
+        model = Transformer(encoder, decoder, generator)
         
         #~ print(encoder)
         

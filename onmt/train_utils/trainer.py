@@ -37,7 +37,6 @@ class BaseTrainer(object):
         self.cuda = (len(opt.gpus) >= 1)
 
         self.loss_function = loss_function
-        self.adv_loss_function = nn.NLLLoss(reduction='sum')
 
         self.start_time = 0
 
@@ -123,18 +122,10 @@ class XETrainer(BaseTrainer):
         return file_name
 
     def eval(self, data):
-        opt = self.opt
-        weight_sum = opt.w_reconstr + opt.w_classif
-        # normalize weights
-        w_reconstr, w_classif = opt.w_reconstr / weight_sum, opt.w_classif / weight_sum
-
         epoch_loss = 0
-        epoch_loss_reconstruction = 0
-        epoch_loss_adv = 0
         total_words = 0
         nSamples = len(data)
         num_accumulated_sents = 0
-        correct = 0
 
         batch_order = data.create_order()
         self.model.eval()
@@ -156,34 +147,25 @@ class XETrainer(BaseTrainer):
                 else:
                     self.model.decoder.set_active(1)
 
-                outputs, classified_repr = self.model(batch, None)
+                outputs = self.model(batch)
                 targets = batch[1][1:]
-                targets_style = batch[2]
 
                 batch_size = targets.size(1)
 
                 loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator,
                                                             backward=False)
-                loss_adv = self.adv_loss_function(classified_repr, targets_style)
-                loss_total = w_reconstr * loss_reconstruction + w_classif * loss_adv
 
-                loss_total = loss_total.data.cpu().numpy()
-                loss_adv = loss_adv.data.cpu().numpy()
                 loss_reconstruction = loss_reconstruction.data.cpu().numpy()
 
-                epoch_loss += loss_total
-                epoch_loss_reconstruction += loss_reconstruction
-                epoch_loss_adv += loss_adv
+                epoch_loss += loss_reconstruction
                 total_words += targets.data.ne(onmt.Constants.PAD).sum().item()
                 num_accumulated_sents += batch_size
-                correct += classified_repr.argmax(dim=1).eq(targets_style).sum(dim=0).cpu().numpy()
-
 
         self.model.train()
-        return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
-               epoch_loss_adv / num_accumulated_sents, correct / num_accumulated_sents
+        return epoch_loss / total_words
 
-    def train_epoch(self, epoch, p, classif_only, resume=False, batchOrder=None, iteration=0):
+
+    def train_epoch(self, epoch, resume=False, batchOrder=None, iteration=0):
         """
 
         :param epoch:
@@ -194,17 +176,8 @@ class XETrainer(BaseTrainer):
         :return:
         """
 
-        if classif_only:
-            print('Only training classifier')
-            self.model.set_trainable(False, False, True)
-        else:
-            # train everything at once
-            self.model.set_trainable(True, True, True)
 
         opt = self.opt
-        weight_sum = opt.w_reconstr + opt.w_classif
-        # normalize weights
-        w_reconstr, w_classif = opt.w_reconstr / weight_sum, opt.w_classif / weight_sum
         trainData = self.trainData
 
         # Clear the gradients of the model
@@ -234,10 +207,8 @@ class XETrainer(BaseTrainer):
 
         epoch_loss = 0
         epoch_loss_reconstruction = 0
-        epoch_loss_adv = 0
         total_words = 0
         report_loss, report_tgt_words = 0, 0
-        correct = 0
         report_src_words = 0
         start = time.time()
         nSamples = len(trainData)
@@ -262,52 +233,30 @@ class XETrainer(BaseTrainer):
                 self.model.decoder.set_active(1)
 
             targets = batch[1][1:]
-            targets_style = batch[2]
 
             batch_size = targets.size(1)
 
             try:
-                def train_part(total_loss_f):
-                    # update learning rate according to "Unsupervised Domain Adaptation by Backpropagation" by Ganin et al
-                    lambd = opt.adapt_alpha * (2. / (1. + np.exp(-opt.adapt_gamma * p)) - 1)
+                outputs = self.model(batch)
 
-                    outputs, classified_repr = self.model(batch, lambd)
+                tgt_mask = targets.data.ne(onmt.Constants.PAD)
+                tgt_size = tgt_mask.sum()
 
-                    tgt_mask = targets.data.ne(onmt.Constants.PAD)
-                    tgt_size = tgt_mask.sum()
+                tgt_mask = torch.autograd.Variable(tgt_mask)
+                # ~ tgt_mask = None
+                normalizer = 1
 
-                    tgt_mask = torch.autograd.Variable(tgt_mask)
-                    # ~ tgt_mask = None
-                    normalizer = 1
+                if self.opt.normalize_gradient:
+                    normalizer = tgt_size
 
-                    if self.opt.normalize_gradient:
-                        normalizer = tgt_size
+                loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator,
+                                                                       backward=False, mask=tgt_mask,
+                                                                       normalizer=normalizer)
+                loss_reconstruction.backward()
 
-                    loss_reconstruction, _ = self.loss_function(outputs, targets, generator=self.model.generator,
-                                                                           backward=False, mask=tgt_mask,
-                                                                           normalizer=normalizer)
-
-                    loss_adv = self.adv_loss_function(classified_repr, targets_style)
-                    loss_total = total_loss_f(loss_reconstruction, loss_adv)
-                    loss_total.backward()
-
-                    if i <= 1 and opt.save_grad is not None:  # only show for first two batches in epoch
-                        plot_grad_flow(self.model.named_parameters(), '{}_ep_{}_it_{}.png'.format(opt.save_grad, epoch, i),
-                                       '{}_ep_{}_it_{}.csv'.format(opt.save_grad, epoch, i))
-
-                    # update parameters immediately
-                    self.optim.step(grad_denom=1)
-                    self.model.zero_grad()
-
-                    return loss_total, loss_reconstruction, loss_adv, classified_repr
-
-                if classif_only:
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = \
-                        train_part(lambda loss_reconstr, loss_class : w_classif * loss_class)
-                else:
-                    # train everything at once
-                    loss_total, loss_reconstruction, loss_adv, classified_repr = \
-                        train_part(lambda loss_reconstr, loss_class : w_reconstr * loss_reconstr + w_classif * loss_class)
+                # update parameters immediately
+                self.optim.step(grad_denom=1)
+                self.model.zero_grad()
 
 
             except RuntimeError as e:
@@ -327,19 +276,15 @@ class XETrainer(BaseTrainer):
 
                 # important: convert to numpy (or set requires_grad to False), otherwise the statistics variables are tensors and contain
                 # the history of the whole epoch, leading to a memory overflow
-                loss_total = loss_total.data.cpu().numpy()
-                loss_adv = loss_adv.data.cpu().numpy()
                 loss_reconstruction = loss_reconstruction.data.cpu().numpy()
 
                 num_words = tgt_size
-                report_loss += loss_total
+                report_loss += loss_reconstruction
                 report_tgt_words += num_words
                 report_src_words += src_size
-                epoch_loss += loss_total
+                epoch_loss += loss_reconstruction
                 epoch_loss_reconstruction += loss_reconstruction
-                epoch_loss_adv += loss_adv
                 total_words += num_words
-                correct += classified_repr.argmax(dim=1).eq(targets_style).sum(dim=0).cpu().numpy()
 
                 optim = self.optim
 
@@ -358,8 +303,7 @@ class XETrainer(BaseTrainer):
                     report_src_words = 0
                     start = time.time()
 
-        return epoch_loss / total_words, epoch_loss_reconstruction / total_words, \
-               epoch_loss_adv / num_total_sents, correct / num_total_sents
+        return epoch_loss_reconstruction / total_words
 
     def run(self, save_file=None):
 
@@ -398,51 +342,35 @@ class XETrainer(BaseTrainer):
             init_model_parameters(model, opt)
             resume = False
 
-        valid_loss, reconstr, adv, adv_accuracy = self.eval(self.validData)
+        reconstr = self.eval(self.validData)
         reconstr_ppl = math.exp(min(reconstr, 100))
-        print(
-            '{}\nValid loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}\n{}\n'.format(separator,
-                                                                                                                valid_loss,
-                                                                                                                reconstr_ppl,
-                                                                                                                adv, adv_accuracy,
-                                                                                                                separator))
+        print('{}\nValid reconstruction ppl: {}\n{}\n'.format(separator, reconstr_ppl, separator))
+
         self.start_time = time.time()
 
         best_train_loss = (None, None, None, None)
         best_val_loss = (None, None, None, None)
 
-        for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs + opt.classif_check_ep):
+        for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
             print('')
 
-            #  (1) train for one epoch on the training set
-            p = (epoch - opt.start_epoch) / opt.epochs
-            classif_only = epoch >= opt.start_epoch + opt.epochs
-            train_loss, reconstr, adv, adv_accuracy = self.train_epoch(epoch, p, classif_only, resume=resume,
-                                                                batchOrder=batchOrder,
-                                                                iteration=iteration)
+            reconstr = self.train_epoch(epoch, resume=resume, batchOrder=batchOrder, iteration=iteration)
             reconstr_ppl = math.exp(min(reconstr, 100))
-            print('{}\nTrain loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}\n{}\n'.format(separator,
-                                                                                                          train_loss,
-                                                                                                          reconstr_ppl,
-                                                                                                          adv, adv_accuracy,
-                                                                                                          separator))
-            if best_train_loss[0] is None or best_train_loss[0] > train_loss:
-                best_train_loss = (train_loss, reconstr_ppl, adv)
+            print('{}\nTrain reconstruction ppl: {}\n{}\n'.format(separator, reconstr_ppl, separator))
+
+            if best_train_loss[0] is None or best_train_loss[0] > reconstr_ppl:
+                best_train_loss = (reconstr_ppl,)
 
             #  (2) evaluate on the validation set
-            valid_loss, reconstr, adv, adv_accuracy = self.eval(self.validData)
+            reconstr = self.eval(self.validData)
             reconstr_ppl = math.exp(min(reconstr, 100))
-            print(
-                '{}\nValid loss: {}\nReconstruction ppl: {}\nAdv loss: {}, accuracy: {}\n{}\n'.format(separator,
-                                                                                                      valid_loss,
-                                                                                                      reconstr_ppl,
-                                                                                                      adv, adv_accuracy,
-                                                                                                      separator))
-            if best_val_loss[0] is None or best_val_loss[0] > valid_loss:
-                best_val_loss = (valid_loss, reconstr_ppl, adv)
+            print('{}\nValid reconstruction ppl: {}\n{}\n'.format(separator, reconstr_ppl, separator))
+
+            if best_val_loss[0] is None or best_val_loss[0] > reconstr_ppl:
+                best_val_loss = (reconstr_ppl,)
 
             if epoch % opt.save_every_epoch == 0:
-                model_fname = self.save(epoch, valid_loss)
+                model_fname = self.save(epoch, reconstr_ppl)
 
                 # print translation to make it easier to see if the model is good
                 if opt.translate_src is not None:
@@ -461,16 +389,8 @@ class XETrainer(BaseTrainer):
 
         print('\n\nBEST RESULTS:\n')
 
-        print('{}\nTrain loss: {}\nReconstruction ppl: {}\nAdv loss: {}\n{}\n'.format(separator,
-                                                                                                      best_train_loss[0],
-                                                                                                      best_train_loss[1],
-                                                                                                      best_train_loss[2],
-                                                                                                      separator))
-        print('{}\nValid loss: {}\nReconstruction ppl: {}\nAdv loss: {}\n{}\n'.format(separator,
-                                                                                                      best_val_loss[0],
-                                                                                                      best_val_loss[1],
-                                                                                                      best_val_loss[2],
-                                                                                                      separator))
+        print('{}\nTrain reconstruction ppl: {}\n{}\n'.format(separator, best_train_loss[0], separator))
+        print('{}\nValid reconstruction ppl: {}\n{}\n'.format(separator, best_val_loss[0], separator))
 
 
 

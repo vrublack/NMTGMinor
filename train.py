@@ -38,29 +38,6 @@ parser.add_argument('-layers', type=int, default=2,
                     help='Number of layers in the LSTM encoder/decoder')
 parser.add_argument('-translate_src', default=None, type=str,
                     help='Print sample translation every time the model is saved, if specified.')
-parser.add_argument('-save_grad', type=str, default=None,
-                    help='Saves gradient graph and data to this file + epoch if specified')
-
-# Adversarial options
-parser.add_argument('-classifier_dim', type=int, default=5,
-                    help='Dimension of hidden layer (lstm) in adversarial classifier')
-parser.add_argument('-classifier_dropout', type=float, default=0.5,
-                    help='Dropout applied to lstm in adversarial classifier')
-parser.add_argument('-w_reconstr', type=float, default=1.0,
-                    help='Weight of reconstruction loss')
-parser.add_argument('-w_classif', type=float, default=1.0,
-                    help='Weight of classifier loss (cross-entropy)')
-parser.add_argument('-classif_check_ep', type=int, default=0,
-                    help='Number of epochs at the end to train only the classifier to see how much '
-                         'style the content representation still contains')
-parser.add_argument('-adapt_gamma', type=float, default=10.0,
-                    help='The higher, the faster lambda for the adversarial training increases.')
-parser.add_argument('-adapt_alpha', type=float, default=1.0,
-                    help='Factor for adversarial training. The higher, the worse the classifier should become.')
-parser.add_argument('-classif_inner_size', type=int, default=-1,
-                    help='Size of inner feed forward layer in classifier')
-parser.add_argument('-classif_layers', type=int, default=-1,
-                    help='Number of layers in classifier')
 
 
 # Recurrent Model options
@@ -252,11 +229,11 @@ def main():
         #~ checkpoint = None
     
 
-    trainData = NonParallelDataset(dataset['train']['style1'],
-                             dataset['train']['style2'], dataset['dicts']['style1'], opt.batch_size_words, opt.gpus,
+    trainData = NonParallelDataset(dataset['train']['style1'], dataset['train']['style1_rm'],
+                             dataset['train']['style2'], dataset['train']['style2_rm'], dataset['dicts']['style1'], opt.batch_size_words, opt.gpus,
                              data_type=dataset.get("type", "text"), max_seq_num=opt.batch_size_sents)
-    validData = NonParallelDataset(dataset['valid']['style1'],
-                             dataset['valid']['style2'], dataset['dicts']['style1'], opt.batch_size_words, opt.gpus,
+    validData = NonParallelDataset(dataset['valid']['style1'], dataset['valid']['style1_rm'],
+                             dataset['valid']['style2'], dataset['valid']['style2_rm'], dataset['dicts']['style1'], opt.batch_size_words, opt.gpus,
                              volatile=True,
                              data_type=dataset.get("type", "text"), max_seq_num=opt.batch_size_sents)
 

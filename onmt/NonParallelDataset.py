@@ -13,19 +13,22 @@ class NonParallelDataset(object):
     '''
     batchSize is now changed to have word semantic (probably better)
     '''
-    def __init__(self, srcData, tgtData, dict, batchSize, gpus,
+    def __init__(self, srcData, srcData_rem, tgtData, tgtData_rem, dict, batchSize, gpus,
                  volatile=False, data_type="text", balance=False, max_seq_num=128,
                  multiplier=8, pad_count=True):
         self.dict = dict
 
         style1 = srcData
+        style1_rem = srcData_rem
         style2 = tgtData
+        style2_rem = tgtData_rem
 
-        concatSrc, targets = self.concat(style1, style2)
+        concatSrc, concatSrc_rem, targets = self.concat(style1, style1_rem, style2, style2_rem)
         self.n_style1 = len(style1)
         self.n = len(concatSrc)
 
         self.src = concatSrc
+        self.src_rem = concatSrc_rem
         self._type = data_type
         self.tgt = targets
         assert(len(self.src) == len(self.tgt))
@@ -51,8 +54,8 @@ class NonParallelDataset(object):
             # self.numBatches = math.ceil(len(self.src)/batchSize)
 
 
-    def concat(self, style1, style2):
-        return style1 + style2, [0] * len(style1) + [1] * len(style2)
+    def concat(self, style1, style1_rem, style2, style2_rem):
+        return style1 + style2, style1_rem + style2_rem, [0] * len(style1) + [1] * len(style2)
 
 
     #~ # This function allocates the mini-batches (grouping sentences with the same size)
@@ -127,8 +130,9 @@ class NonParallelDataset(object):
 
         batch = self.batches[index]
         srcData = [self.src[i] for i in batch]
+        srcData_rem = [self.src_rem[i] for i in batch]
         srcBatch, lengths = self._batchify(
-            srcData,
+            srcData_rem,
             align_right=False, include_lengths=True, dtype=self._type)
 
         tgtSeqData = self.to_target(srcData)

@@ -167,16 +167,6 @@ class PrePostProcessing(nn.Module):
         return output
 
 
-class Bottleneck(nn.Module):
-
-    def __init__(self, d_model):
-        super(Bottleneck, self).__init__()
-        self.d_model = d_model
-
-    def forward(self, tensor):
-        squashed = tensor.mean(dim=1, keepdim=True)
-        return squashed
-
 
 class MultiHeadAttention(nn.Module):
     """Applies multi-head attentions to inputs (query, key, value)

@@ -2,7 +2,7 @@ import numpy as np
 import torch, math
 import torch.nn as nn
 
-from onmt.modules.Transformer.Layers import EncoderLayer, DecoderLayer, PositionalEncoding, variational_dropout, PrePostProcessing, Bottleneck
+from onmt.modules.Transformer.Layers import EncoderLayer, DecoderLayer, PositionalEncoding, variational_dropout, PrePostProcessing
 from onmt.modules.BaseModel import NMTModel, Reconstructor, DecoderState
 import onmt
 from onmt.modules.WordDrop import embedded_dropout
@@ -59,11 +59,6 @@ class TransformerEncoder(nn.Module):
         self.preprocess_layer = PrePostProcessing(self.model_size, self.emb_dropout, sequence='d', static=False)
         
         self.postprocess_layer = PrePostProcessing(self.model_size, 0, sequence='n')
-
-        if opt.bottleneck:
-            self.bottleneck_layer = Bottleneck(self.model_size)
-        else:
-            self.bottleneck_layer = None
 
         self.positional_encoder = positional_encoder
         
@@ -159,9 +154,6 @@ class TransformerEncoder(nn.Module):
         # on the output, since the output can grow very large, being the sum of
         # a whole stack of unnormalized layer outputs.    
         context = self.postprocess_layer(context)
-
-        if self.bottleneck_layer is not None:
-            context = self.bottleneck_layer(context)
 
         return context, mask_src
         
@@ -421,13 +413,8 @@ class TransformerDecoder(nn.Module):
 class Transformer(NMTModel):
     """Main model in 'Attention is all you need' """
 
-    def __init__(self, encoder, decoder, repr_classifier, generator=None):
-        super(Transformer, self).__init__(encoder, decoder, generator)
 
-        self.repr_classifier = repr_classifier
-
-
-    def forward(self, input, lambd, grow=False):
+    def forward(self, input, grow=False):
         """
         Inputs Shapes: 
             src: len_src x batch_size
@@ -436,8 +423,7 @@ class Transformer(NMTModel):
         Outputs Shapes:
             out:      batch_size*len_tgt x model_size
 
-        :param lambd Lambda for the GradReverse layer in classifier
-            
+
         """
         src = input[0]
         tgt = input[1][:-1]  # exclude last target from inputs
@@ -447,16 +433,11 @@ class Transformer(NMTModel):
 
         context, src_mask = self.encoder(src, grow=grow)
 
-        if self.encoder.bottleneck_layer is not None:
-            src = src[:, :1]
-
-        classified_repr = self.repr_classifier(tgt, context, src, lambd, grow=grow)
-
         output, coverage = self.decoder(tgt, context, src, grow=grow)
         
         output = output.transpose(0, 1) # transpose to have time first, like RNN models
 
-        return output, classified_repr
+        return output
         
     def create_decoder_state(self, src, context, beamSize=1):
         
@@ -464,9 +445,6 @@ class Transformer(NMTModel):
         from onmt.modules.StochasticTransformer.Models import StochasticTransformerEncoder, StochasticTransformerDecoder
         from onmt.modules.UniversalTransformer.Models import UniversalTransformerDecoder
 
-        if self.encoder.bottleneck_layer is not None:
-            src = src[:1, :]
-        
         if isinstance(self.decoder, TransformerDecoder) or isinstance(self.decoder, StochasticTransformerDecoder) \
                 or isinstance(self.decoder, UniversalTransformerDecoder) or isinstance(self.decoder, MultiDecoder):
             decoder_state = TransformerDecodingState(src, context, beamSize=beamSize)
@@ -474,14 +452,6 @@ class Transformer(NMTModel):
             from onmt.modules.ParallelTransformer.Models import ParallelTransformerDecodingState
             decoder_state = ParallelTransformerDecodingState(src, context, beamSize=beamSize)
         return decoder_state
-
-    def set_trainable(self, encoder, decoder, classifier):
-        for p in self.encoder.parameters():
-            p.requires_grad = encoder
-        for p in self.decoder.parameters():
-            p.requires_grad = decoder
-        for p in self.repr_classifier.parameters():
-            p.requires_grad = classifier
 
 
 class TransformerDecodingState(DecoderState):

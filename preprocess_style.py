@@ -28,12 +28,20 @@ parser.add_argument('-style1_img_dir', default=".",
 
 parser.add_argument('-train_style1', required=True,
                     help="Path to the training style1 data")
+parser.add_argument('-train_style1_rm', required=True,
+                    help="Path to the training style1 data with salient words removed")
 parser.add_argument('-train_style2', required=True,
                     help="Path to the training style2 data")
+parser.add_argument('-train_style2_rm', required=True,
+                    help="Path to the training style2 data with salient words removed")
 parser.add_argument('-valid_style1', required=True,
                     help="Path to the validation style1 data")
+parser.add_argument('-valid_style1_rm', required=True,
+                    help="Path to the validation style1 data with salient words removed")
 parser.add_argument('-valid_style2', required=True,
                     help="Path to the validation style2 data")
+parser.add_argument('-valid_style2_rm', required=True,
+                    help="Path to the validation style2 data with salient words removed")
 
 parser.add_argument('-save_data', required=True,
                     help="Output file for the prepared data")
@@ -94,8 +102,8 @@ def makeJoinVocabulary(filenames, size):
 
 def makeVocabulary(filename, size):
     vocab = onmt.Dict([onmt.Constants.PAD_WORD, onmt.Constants.UNK_WORD,
-                       onmt.Constants.BOS_WORD, onmt.Constants.EOS_WORD],
-                      lower=opt.lower)
+                       onmt.Constants.BOS_WORD, onmt.Constants.EOS_WORD,
+                       onmt.Constants.DEL_WORD], lower=opt.lower)
 
     with open(filename) as f:
         for sent in f.readlines():
@@ -249,6 +257,11 @@ def main():
                                           dicts['style1'], dicts['style2'],
                                           max_style1_length=opt.style1_seq_length,
                                           max_style2_length=opt.style2_seq_length)
+    train['style1_rm'], train['style2_rm'] = makeData(opt.train_style1_rm, opt.train_style2_rm,
+                                          dicts['style1'], dicts['style2'],
+                                          max_style1_length=opt.style1_seq_length,
+                                          max_style2_length=opt.style2_seq_length)
+
 
     print('Preparing validation ...')
     valid = {}
@@ -256,6 +269,11 @@ def main():
                                           dicts['style1'], dicts['style2'], 
                                           max_style1_length=max(256,opt.style1_seq_length), 
                                           max_style2_length=max(256,opt.style2_seq_length))
+    valid['style1_rm'], valid['style2_rm'] = makeData(opt.valid_style1_rm, opt.valid_style2_rm,
+                                          dicts['style1'], dicts['style2'],
+                                          max_style1_length=max(256,opt.style1_seq_length),
+                                          max_style2_length=max(256,opt.style2_seq_length))
+
 
     if opt.style1_vocab is None:
         saveVocabulary('style1', dicts['style1'], opt.save_data + '.style1.dict')

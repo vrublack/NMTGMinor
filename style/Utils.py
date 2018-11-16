@@ -34,7 +34,7 @@ def removeSalient(sentence, dist_this, dist_other, gamma_thresh=15):
             phrase = [w.lower() for w in x[start:start + n_gr]]
             if saliency(tuple(phrase), dist_this, dist_other) > gamma_thresh:
                 for i in range(start, start + n_gr):
-                    x[i] = '<del>'
+                    x[i] = 'DEL'
 
     return ' '.join(x)
 

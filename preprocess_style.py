@@ -57,12 +57,8 @@ parser.add_argument('-style2_vocab',
 
 parser.add_argument('-style1_seq_length', type=int, default=64,
                     help="Maximum style1 sequence length")
-parser.add_argument('-style1_seq_length_trunc', type=int, default=0,
-                    help="Truncate style1 sequence length.")
 parser.add_argument('-style2_seq_length', type=int, default=66,
                     help="Maximum style2 sequence length to keep.")
-parser.add_argument('-style2_seq_length_trunc', type=int, default=0,
-                    help="Truncate style2 sequence length.")
 
 parser.add_argument('-shuffle',    type=int, default=1,
                     help="Shuffle data")
@@ -150,83 +146,56 @@ def saveVocabulary(name, vocab, file):
     vocab.writeFile(file)
 
 
-def makeData(style1File, style2File, style1Dicts, style2Dicts, max_style1_length=64, max_style2_length=64):
-    style1, style2 = [], []
-    sizesStyle1 = []
-    sizesStyle2 = []
-
+def makeData(style1File, style1File_rm, style2File, style2File_rm, style1Dicts, style2Dicts, max_style1_length=64, max_style2_length=64):
     print('Processing %s & %s ...' % (style1File, style2File))
-    style1F = open(style1File)
-    style2F = open(style2File)
 
-    count, ignored = 0, 0
-    for l in style1F.readlines():
-        l = l.strip()
+    ignored = 0
 
-        # style1 and/or style2 are empty
-        if l == "":
-            print('WARNING: ignoring an empty line (' + str(count + 1) + ')')
-            continue
+    def read_file(fname, dict, max_style_len, ignored):
+        style = []
+        size = []
+        count = 0
+        with open(fname) as f:
+            for l in f.readlines():
+                l = l.strip()
+    
+                # style1 and/or style2 are empty
+                if l == "":
+                    print('WARNING: ignoring an empty line (' + str(count + 1) + ')')
+                    continue
+    
+                words = l.split()
+    
+                if len(words) <= max_style_len:
+                    style += [dict.convertToIdx(words, onmt.Constants.UNK_WORD)]
+                    size += [len(words)]
+                else:
+                    ignored += 1
+    
+                count += 1
+    
+                if count % opt.report_every == 0:
+                    print('... %d sentences prepared' % count)
 
-        words = l.split()
+        return style, size
 
-        if len(words) <= max_style1_length:
+    style1, sizesStyle1 = read_file(style1File, style1Dicts, max_style1_length, ignored)
+    style1_rm, sizesStyle1_rm = read_file(style1File_rm, style1Dicts, max_style1_length, ignored)
+    assert len(style1) == len(style1_rm)
 
-            # Check truncation condition.
-            if opt.style1_seq_length_trunc != 0:
-                words = words[:opt.style1_seq_length_trunc]
-
-            style1 += [style1Dicts.convertToIdx(words,
-                                                onmt.Constants.UNK_WORD)]
-
-            sizesStyle1 += [len(words)]
-        else:
-            ignored += 1
-
-        count += 1
-
-        if count % opt.report_every == 0:
-            print('... %d sentences prepared' % count)
-
-
-    count, ignored = 0, 0
-    for l in style2F.readlines():
-        l = l.strip()
-
-        # style1 and/or style2 are empty
-        if l == "":
-            print('WARNING: ignoring an empty line (' + str(count + 1) + ')')
-            continue
-
-        words = l.split()
-
-        if len(words) <= max_style2_length:
-
-            # Check truncation condition.
-            if opt.style2_seq_length_trunc != 0:
-                words = words[:opt.style2_seq_length_trunc]
-
-            style2 += [style2Dicts.convertToIdx(words,
-                                                onmt.Constants.UNK_WORD)]
-
-            sizesStyle2 += [len(words)]
-        else:
-            ignored += 1
-
-        count += 1
-
-        if count % opt.report_every == 0:
-            print('... %d sentences prepared' % count)
-
-    style1F.close()
-    style2F.close()
+    style2, sizesStyle2 = read_file(style2File, style2Dicts, max_style2_length, ignored)
+    style2_rm, sizesStyle2_rm = read_file(style2File_rm, style2Dicts, max_style2_length, ignored)
+    assert len(style2) == len(style2_rm)
+    
 
     if opt.shuffle == 1:
         print('... shuffling sentences')
         perm1 = torch.randperm(len(style1))
         perm2 = torch.randperm(len(style2))
         style1 = [style1[idx] for idx in perm1]
+        style1_rm = [style1_rm[idx] for idx in perm1]
         style2 = [style2[idx] for idx in perm2]
+        style2_rm = [style2_rm[idx] for idx in perm2]
         sizesStyle1 = [sizesStyle1[idx] for idx in perm1]
         sizesStyle2 = [sizesStyle2[idx] for idx in perm2]
 
@@ -235,12 +204,15 @@ def makeData(style1File, style2File, style1Dicts, style2Dicts, max_style1_length
     _, perm2 = torch.sort(torch.Tensor(sizesStyle2), descending=(opt.sort_type == 'descending'))
     style1 = [style1[idx] for idx in perm1]
     style2 = [style2[idx] for idx in perm2]
+    style1_rm = [style1_rm[idx] for idx in perm1]
+    style2_rm = [style2_rm[idx] for idx in perm2]
+
 
     print(('Prepared %d / %d sentences ' +
           '(%d ignored due to length == 0 or style1 len > %d or style2 len > %d)') %
           (len(style1), len(style2), ignored, max_style1_length, max_style2_length))
 
-    return style1, style2
+    return style1, style1_rm, style2, style2_rm
 
 
 def main():
@@ -253,11 +225,8 @@ def main():
 
     print('Preparing training ...')
     train = {}
-    train['style1'], train['style2'] = makeData(opt.train_style1, opt.train_style2,
-                                          dicts['style1'], dicts['style2'],
-                                          max_style1_length=opt.style1_seq_length,
-                                          max_style2_length=opt.style2_seq_length)
-    train['style1_rm'], train['style2_rm'] = makeData(opt.train_style1_rm, opt.train_style2_rm,
+    train['style1'], train['style1_rm'], train['style2'], train['style2_rm'] = \
+        makeData(opt.train_style1, opt.train_style1_rm, opt.train_style2, opt.train_style2_rm,
                                           dicts['style1'], dicts['style2'],
                                           max_style1_length=opt.style1_seq_length,
                                           max_style2_length=opt.style2_seq_length)
@@ -265,13 +234,10 @@ def main():
 
     print('Preparing validation ...')
     valid = {}
-    valid['style1'], valid['style2'] = makeData(opt.valid_style1, opt.valid_style2,
+    valid['style1'], valid['style1_rm'], valid['style2'], valid['style2_rm'] = \
+        makeData(opt.valid_style1, opt.valid_style1_rm, opt.valid_style2, opt.valid_style2_rm,
                                           dicts['style1'], dicts['style2'], 
                                           max_style1_length=max(256,opt.style1_seq_length), 
-                                          max_style2_length=max(256,opt.style2_seq_length))
-    valid['style1_rm'], valid['style2_rm'] = makeData(opt.valid_style1_rm, opt.valid_style2_rm,
-                                          dicts['style1'], dicts['style2'],
-                                          max_style1_length=max(256,opt.style1_seq_length),
                                           max_style2_length=max(256,opt.style2_seq_length))
 
 

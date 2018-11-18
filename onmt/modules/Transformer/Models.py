@@ -480,6 +480,8 @@ class Transformer(NMTModel):
             p.requires_grad = encoder
         for p in self.decoder.parameters():
             p.requires_grad = decoder
+        for p in self.generator.parameters():
+            p.requires_grad = decoder
         for p in self.repr_classifier.parameters():
             p.requires_grad = classifier
 

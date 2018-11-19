@@ -21,7 +21,7 @@ do
            src_t=0
         fi
         printf -v FNAME "out/mout_%s_target_%d" "${models[$i]}" $t
-        python3 ../translate.py -model ../save/${models[$i]} -src ${DATA_PATH}/valid-del-sta3-mid.$src_t -target_style $t -out $FNAME -max_sent_length 30 -remove_bpe
+        python3 ../translate.py -model ../save/${models[$i]} -src ${DATA_PATH}/valid-mid-del.$src_t -target_style $t -out $FNAME -max_sent_length 30 -remove_bpe
         OUT_FNAMES+=($FNAME)
         REF_FNAMES+=(${REF_PATH}/valid-mid.$src_t)
     done

@@ -41,23 +41,24 @@ for split in ['train', 'dev', 'valid']:
 
         return ' '.join(x), total_tokens, deleted_tokens
 
+    threshold = 7
 
-    with open('/Users/valentin/BThesis/data/yelp/{}/{}-del.0'.format(split, split), 'w') as f:
+    with open('/Users/valentin/BThesis/data/yelp/{}/{}-del-{}.0'.format(split, split, threshold), 'w') as f:
         total_tokens = 0
         deleted_tokens = 0
         for line in lines_0:
-            sent, tot, dele = removeSalient(line, dist_0, dist_1)
+            sent, tot, dele = removeSalient(line, dist_0, dist_1, threshold)
             total_tokens += tot
             deleted_tokens += dele
             f.write(sent + '\n')
         print('Deleted {} out of {} tokens ({} %) in /Users/valentin/BThesis/data/yelp/{}/{}-del.0'.format(
             deleted_tokens, total_tokens, 100 * deleted_tokens / total_tokens, split, split))
 
-    with open('/Users/valentin/BThesis/data/yelp/{}/{}-del.1'.format(split, split), 'w') as f:
+    with open('/Users/valentin/BThesis/data/yelp/{}/{}-del-{}.1'.format(split, split, threshold), 'w') as f:
         total_tokens = 0
         deleted_tokens = 0
         for line in lines_1:
-            sent, tot, dele = removeSalient(line, dist_1, dist_0)
+            sent, tot, dele = removeSalient(line, dist_1, dist_0, threshold)
             total_tokens += tot
             deleted_tokens += dele
             f.write(sent + '\n')

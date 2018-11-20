@@ -29,20 +29,37 @@ for split in ['train', 'dev', 'valid']:
 
     def removeSalient(sentence, dist_this, dist_other, gamma_thresh=15):
         x = word_tokenize(sentence)
+        total_tokens = len(x)
+        deleted_tokens = 0
         for n_gr in range(4, 0, -1):
             for start in range(len(x) - n_gr + 1):
                 phrase = [w.lower() for w in x[start:start + n_gr]]
                 if saliency(tuple(phrase), dist_this, dist_other) > gamma_thresh:
                     for i in range(start, start + n_gr):
                         x[i] = 'DEL'
+                        deleted_tokens += 1
 
-        return ' '.join(x)
+        return ' '.join(x), total_tokens, deleted_tokens
 
 
     with open('/Users/valentin/BThesis/data/yelp/{}/{}-del.0'.format(split, split), 'w') as f:
+        total_tokens = 0
+        deleted_tokens = 0
         for line in lines_0:
-            f.write(removeSalient(line, dist_0, dist_1) + '\n')
+            sent, tot, dele = removeSalient(line, dist_0, dist_1)
+            total_tokens += tot
+            deleted_tokens += dele
+            f.write(sent + '\n')
+        print('Deleted {} out of {} tokens ({} %) in /Users/valentin/BThesis/data/yelp/{}/{}-del.0'.format(
+            deleted_tokens, total_tokens, 100 * deleted_tokens / total_tokens, split, split))
 
     with open('/Users/valentin/BThesis/data/yelp/{}/{}-del.1'.format(split, split), 'w') as f:
+        total_tokens = 0
+        deleted_tokens = 0
         for line in lines_1:
-            f.write(removeSalient(line, dist_1, dist_0) + '\n')
+            sent, tot, dele = removeSalient(line, dist_1, dist_0)
+            total_tokens += tot
+            deleted_tokens += dele
+            f.write(sent + '\n')
+        print('Deleted {} out of {} tokens ({} %) in /Users/valentin/BThesis/data/yelp/{}/{}-del.1'.format(
+            deleted_tokens, total_tokens, 100 * deleted_tokens / total_tokens, split, split))

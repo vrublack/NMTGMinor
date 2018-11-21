@@ -419,9 +419,9 @@ class XETrainer(BaseTrainer):
         for epoch in range(opt.start_epoch, opt.start_epoch + opt.epochs):
             print('')
 
-            p = (epoch - opt.start_epoch + 1) / opt.reconstr_headstart
+            p = (epoch - opt.start_epoch + 1) / opt.reconstr_headstart if opt.reconstr_headstart != 0 else 0
 
-            if epoch - opt.start_epoch <= opt.reconstr_headstart:
+            if epoch - opt.start_epoch < opt.reconstr_headstart:
                 if train_phase != 'headstart':
                     self.model.set_trainable(True, True, True)
                     train_phase = 'headstart'

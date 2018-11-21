@@ -425,7 +425,7 @@ class XETrainer(BaseTrainer):
                 if train_phase != 'headstart':
                     self.model.set_trainable(True, True, True)
                     train_phase = 'headstart'
-            elif remaining_dis > 0:
+            elif remaining_dis > 0 or opt.reconstr_train_n == 0:
                 if train_phase != 'discriminator':
                     if not opt.no_avg:
                         # re-initialize with weights from reconstruction decoder

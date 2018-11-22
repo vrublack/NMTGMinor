@@ -21,6 +21,13 @@ class NonParallelDataset(object):
         style1 = srcData
         style2 = tgtData
 
+        # FOR DEBUGGING ONLY: zero data (still preserves length of the sequence)
+        print('WARNING: zeroing data for debugging purposes')
+        for sent in style1:
+            sent.fill_(dict.labelToIdx['<unk>'])
+        for sent in style2:
+            sent.fill_(dict.labelToIdx['<unk>'])
+
         concatSrc, targets = self.concat(style1, style2)
         self.n_style1 = len(style1)
         self.n = len(concatSrc)

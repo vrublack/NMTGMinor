@@ -40,10 +40,6 @@ parser.add_argument('-translate_src', default=None, type=str,
                     help='Print sample translation every time the model is saved, if specified.')
 
 # Adversarial options
-parser.add_argument('-classifier_dim', type=int, default=5,
-                    help='Dimension of hidden layer (lstm) in adversarial classifier')
-parser.add_argument('-classifier_dropout', type=float, default=0.5,
-                    help='Dropout applied to lstm in adversarial classifier')
 parser.add_argument('-w_reconstr', type=float, default=1.0,
                     help='Weight of reconstruction loss')
 parser.add_argument('-w_adv', type=float, default=1.0,

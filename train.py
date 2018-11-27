@@ -55,7 +55,7 @@ parser.add_argument('-classif_train_n', type=int, default=50,
 parser.add_argument('-reconstr_train_n', type=int, default=1,
                     help='How many consecutive epochs to train reconstruction with adversarial loss')
 parser.add_argument('-reconstr_headstart', type=int, default=10,
-                    help='How many epochs to train only reconstruction in the beginning')
+                    help='How many epochs to train only reconstruction + classifier in the beginning')
 
 
 # Recurrent Model options

@@ -187,7 +187,7 @@ class XETrainer(BaseTrainer):
 
         if epoch <= opt.reconstr_headstart:
             # train reconstruction without adversarial loss
-            self.model.set_trainable(True, True, False)
+            self.model.set_trainable(True, True, True)
             train_phase = 'headstart'
         elif (epoch - opt.reconstr_headstart - 1) % (opt.reconstr_train_n + opt.classif_train_n) < opt.classif_train_n:
             # train discriminator
@@ -288,8 +288,8 @@ class XETrainer(BaseTrainer):
                     return loss_total, loss_reconstruction, loss_adv, classified_repr
 
                 if train_phase == 'headstart':
-                    # train reconstruction without adversarial loss
-                    total_loss_f = lambda loss_reconstr, loss_class: w_reconstr * loss_reconstr
+                    # make reconstruction and classifier better
+                    total_loss_f = lambda loss_reconstr, loss_class: w_reconstr * loss_reconstr + w_classif * loss_class
                     loss_total, loss_reconstruction, loss_adv, classified_repr = train_part(total_loss_f)
                 elif train_phase == 'reconstruction':
                     # train reconstruction with adversarial loss

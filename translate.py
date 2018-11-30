@@ -65,8 +65,6 @@ parser.add_argument('-remove_bpe', action='store_true',
                     help='Remove bpe from translation')
 parser.add_argument('-diff', action='store_true',
                     help='Show diff between original and translation in each line')
-parser.add_argument('-lr', type=float, default=None,
-                    help="Gradient multiplier. Auto when not specified")
 
 
 
@@ -160,7 +158,7 @@ def translate(args):
                 break
 
         predBatch, predScore, predLength, goldScore, numGoldWords  = translator.translate(srcBatch,
-                                                                                    tgtBatch, opt.lr)
+                                                                                    tgtBatch)
         if opt.normalize:
             predBatch_ = []
             predScore_ = []

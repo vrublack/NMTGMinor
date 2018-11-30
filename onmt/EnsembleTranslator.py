@@ -176,7 +176,7 @@ class EnsembleTranslator(object):
         
         return tokens
 
-    def translateBatch(self, rawSrcBatch, srcBatch, tgtBatch, lr):
+    def translateBatch(self, rawSrcBatch, srcBatch, tgtBatch, lr=2.3):
 
         # Batch size is in different location depending on data.
 
@@ -192,66 +192,23 @@ class EnsembleTranslator(object):
         contexts = dict()
 
         src = srcBatch.transpose(0, 1)
-
-        def auto_lr(raw_sent, target):
-            len_wo_bpe = len(' '.join(raw_sent).replace('@@ ', ''))
-            if target == 2:
-                if len_wo_bpe <= 15:
-                    return 9
-                elif len_wo_bpe <= 25:
-                    return 6
-                elif len_wo_bpe <= 35:
-                    return 4
-                elif len_wo_bpe <= 45:
-                    return 3
-                elif len_wo_bpe <= 55:
-                    return 3
-                elif len_wo_bpe <= 65:
-                    return 2.5
-                elif len_wo_bpe <= 75:
-                    return 2
-                elif len_wo_bpe <= 85:
-                    return 2
-                else:
-                    return 2
-            else:
-                if len_wo_bpe <= 15:
-                    return 30
-                elif len_wo_bpe <= 25:
-                    return 6
-                elif len_wo_bpe <= 35:
-                    return 2
-                elif len_wo_bpe <= 45:
-                    return 2
-                elif len_wo_bpe <= 55:
-                    return 1
-                elif len_wo_bpe <= 65:
-                    return 2
-                elif len_wo_bpe <= 75:
-                    return 1.5
-                elif len_wo_bpe <= 85:
-                    return 2.5
-                else:
-                    return 2.5
-
         
         #  (1) run the encoders on the src
         for i in range(self.n_models):
             contexts[i], src_mask = self.models[i].encoder(src)
-            contexts[i] = torch.autograd.Variable(contexts[i], requires_grad=True)
             self.models[i].repr_classifier.cuda = False
-            classified_repr = self.models[i].repr_classifier(contexts[i])
-            modified_context = contexts[i]
-            for b in range(classified_repr.shape[0]):
-                classified_repr[b, self.opt.target_style - 1].backward(retain_graph=True)
-                if lr is None:
-                    learning_rate = auto_lr(rawSrcBatch[b], self.opt.target_style - 1)
-                else:
-                    learning_rate = lr
-                modified_context = modified_context + learning_rate * contexts[i].grad
-                contexts[i].grad.zero_()
+            iterations = 40
+            # gradient ascent
+            for _ in range(iterations):
+                contexts[i] = torch.autograd.Variable(contexts[i], requires_grad=True)
+                modified_context = contexts[i]
+                classified_repr = self.models[i].repr_classifier(contexts[i])
+                for b in range(classified_repr.shape[0]):
+                    classified_repr[b, self.opt.target_style - 1].backward(retain_graph=True)
+                    modified_context = modified_context + lr * contexts[i].grad
+                    contexts[i].grad.zero_()
 
-            contexts[i] = modified_context
+                contexts[i] = modified_context
 
 
         goldScores = contexts[0].data.new(batchSize).zero_()
@@ -400,7 +357,7 @@ class EnsembleTranslator(object):
 
         return allHyp, allScores, allAttn, allLengths, goldScores, goldWords
 
-    def translate(self, srcBatch, goldBatch, lr):
+    def translate(self, srcBatch, goldBatch):
         #  (1) convert words to indexes
         dataset = self.buildData(srcBatch, goldBatch)
         batch = self.to_variable(dataset.next()[0])
@@ -408,7 +365,7 @@ class EnsembleTranslator(object):
         batchSize = self._getBatchSize(src)
 
         #  (2) translate
-        pred, predScore, attn, predLength, goldScore, goldWords = self.translateBatch(srcBatch, src, tgt, lr)
+        pred, predScore, attn, predLength, goldScore, goldWords = self.translateBatch(srcBatch, src, tgt)
         
 
         #  (3) convert indexes to words

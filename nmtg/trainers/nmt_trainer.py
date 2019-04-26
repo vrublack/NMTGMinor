@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
+from nmtg.adapt.discriminator import Discriminator
 from nmtg.data import Dictionary, data_utils, ParallelDataset
 from nmtg.data.noisy_text import NoisyTextDataset
 from nmtg.data.samplers import PreGeneratedBatchSampler
@@ -191,7 +192,7 @@ class NMTTrainer(Trainer):
             raise ValueError('Cannot join vocabularies when loading pre-trained target embeddings')
 
         dummy_input = torch.zeros(1, 1, embedding_size)
-        dummy_output, _ = model(dummy_input, dummy_input)
+        dummy_output, _, _ = model(dummy_input, dummy_input)
         output_size = dummy_output.size(-1)
 
         src_embedding = self._get_embedding(model_args, self.src_dict, embedding_size,
@@ -230,6 +231,7 @@ class NMTTrainer(Trainer):
                 param.requires_grad_(False)
 
         self.model = EncoderDecoderModel(encoder, decoder)
+        self.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
         self.model.batch_first = model_args.batch_first
 
     @staticmethod
@@ -375,9 +377,11 @@ class NMTTrainer(Trainer):
 
         encoder_mask = encoder_input.ne(self.src_dict.pad())
         decoder_mask = decoder_input.ne(self.tgt_dict.pad())
-        outputs, attn_out = self.model(encoder_input, decoder_input, encoder_mask, decoder_mask)
-        lprobs = self.model.get_normalized_probs(outputs, attn_out, encoder_input,
+        encoder_out, decoder_out, attn_out = self.model(encoder_input, decoder_input, encoder_mask, decoder_mask)
+        lprobs = self.model.get_normalized_probs(decoder_out, attn_out, encoder_input,
                                             encoder_mask, decoder_mask, log_probs=True)
+        encoder_classified = self.discriminator(encoder_out)
+
         if training:
             targets = targets.masked_select(decoder_mask)
         return self.loss(lprobs, targets)

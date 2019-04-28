@@ -14,7 +14,12 @@ class ParallelDataset(Dataset):
 
     def __getitem__(self, index):
         source = self.src_data[index]
-        res = {'id': index, 'src_indices': source, 'src_size': len(source)}
+        res = {'id': index}
+        if type(source) == tuple:
+            source, domain_label = source
+            res['domain_label'] = domain_label
+        res['src_indices'] = source
+        res['src_size'] = len(source)
         if self.src_lang is not None:
             res['src_lang'] = self.src_lang
 
@@ -51,6 +56,11 @@ class ParallelDataset(Dataset):
             res['tgt_lengths'] = target_output['lengths']
             if 'tgt_lang' in samples[0]:
                 res['tgt_lang'] = [x['tgt_lang'] for x in samples]
+
+        if len(samples) > 0 and 'domain_label' in samples[0]:
+            res['domain_label'] = torch.tensor([x['domain_label'] for x in samples])
+
+        res['n'] = len(samples)
 
         return res
 

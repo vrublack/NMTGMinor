@@ -176,6 +176,12 @@ class NMTTrainer(Trainer):
             loss.cuda()
         self.loss = loss
 
+        discriminator_loss = nn.NLLLoss(reduction='sum')
+        if self.args.cuda:
+            discriminator_loss.cuda()
+        if self.args.discriminator:
+            self.discriminator_loss = discriminator_loss
+
     def _build_model(self, model_args):
         logger.info('Building {} model'.format(model_args.model))
         model = build_model(model_args.model, model_args)
@@ -231,7 +237,9 @@ class NMTTrainer(Trainer):
                 param.requires_grad_(False)
 
         self.model = EncoderDecoderModel(encoder, decoder)
-        self.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
+        if self.args.discriminator:
+            self.model.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
+
         self.model.batch_first = model_args.batch_first
 
     @staticmethod
@@ -259,7 +267,8 @@ class NMTTrainer(Trainer):
                                     words=split_words,
                                     lower=task.lower,
                                     bos=not src, eos=not src,
-                                    trunc_len=self.args.src_seq_length_trunc if src else self.args.tgt_seq_length_trunc)
+                                    trunc_len=self.args.src_seq_length_trunc if src else self.args.tgt_seq_length_trunc,
+                                    domain_label=self.args.discriminator)
         if text_dataset.in_memory:
             if split_words:
                 lengths = np.array([len(sample.split()) for sample in text_dataset])
@@ -278,16 +287,16 @@ class NMTTrainer(Trainer):
         src_data, src_lengths = TextLookupDataset.load(self.args.train_src, self.src_dict, self.args.data_dir,
                                                        self.args.load_into_memory, split_words,
                                                        bos=False, eos=False, trunc_len=self.args.src_seq_length_trunc,
-                                                       lower=self.args.lower)
+                                                       lower=self.args.lower, domain_label=self.args.discriminator)
 
         if self.args.translation_noise:
             src_data = NoisyTextDataset(src_data, self.args.word_shuffle, self.args.noise_word_dropout,
-                                        self.args.word_blank, self.args.bpe_symbol)
+                                        self.args.word_blank, self.args.bpe_symbol, domain_label=self.args.discriminator)
 
         tgt_data, tgt_lengths = TextLookupDataset.load(self.args.train_tgt, self.tgt_dict, self.args.data_dir,
                                                        self.args.load_into_memory, split_words,
                                                        bos=True, eos=True, trunc_len=self.args.tgt_seq_length_trunc,
-                                                       lower=self.args.lower)
+                                                       lower=self.args.lower, domain_label=self.args.discriminator)
         src_data.lengths = src_lengths
         tgt_data.lengths = tgt_lengths
         dataset = ParallelDataset(src_data, tgt_data)
@@ -301,11 +310,12 @@ class NMTTrainer(Trainer):
                                         words=split_words,
                                         lower=task.lower,
                                         bos=False, eos=False,
-                                        trunc_len=self.args.src_seq_length_trunc)
+                                        trunc_len=self.args.src_seq_length_trunc,
+                                        domain_label=self.args.discriminator)
 
         if self.args.eval_noise:
             src_dataset = NoisyTextDataset(src_dataset, self.args.word_shuffle, self.args.noise_word_dropout,
-                                           self.args.word_blank, self.args.bpe_symbol)
+                                           self.args.word_blank, self.args.bpe_symbol, domain_label=self.args.discriminator)
 
         if task.tgt_dataset is not None:
             tgt_dataset = TextLookupDataset(task.tgt_dataset,
@@ -313,7 +323,8 @@ class NMTTrainer(Trainer):
                                             words=split_words,
                                             lower=task.lower,
                                             bos=True, eos=True,
-                                            trunc_len=self.args.tgt_seq_length_trunc)
+                                            trunc_len=self.args.tgt_seq_length_trunc,
+                                            domain_label=self.args.discriminator)
         else:
             tgt_dataset = None
         dataset = ParallelDataset(src_dataset, tgt_dataset)
@@ -347,6 +358,8 @@ class NMTTrainer(Trainer):
         metrics['src_tps'] = AverageMeter()
         metrics['tgt_tps'] = AverageMeter()
         metrics['total_words'] = AverageMeter()
+        metrics['discr_loss'] = AverageMeter()
+        metrics['discr_acc'] = AverageMeter()
         return metrics
 
     def _reset_training_metrics(self, metrics):
@@ -354,6 +367,8 @@ class NMTTrainer(Trainer):
         metrics['src_tps'].reset()
         metrics['tgt_tps'].reset()
         metrics['nll'].reset()
+        metrics['discr_loss'].reset()
+        metrics['discr_acc'].reset()
 
     def _format_train_metrics(self, metrics):
         formatted = super()._format_train_metrics(metrics)
@@ -363,6 +378,9 @@ class NMTTrainer(Trainer):
         srctok = metrics['src_tps'].sum / metrics['it_wall'].elapsed_time
         tgttok = metrics['tgt_tps'].sum / metrics['it_wall'].elapsed_time
         formatted.append('{:5.0f}|{:5.0f} tok/s'.format(srctok, tgttok))
+        if self.args.discriminator:
+            formatted.append('Discriminator accuracy: {:.4f}'.format(metrics['discr_acc'].avg))
+            formatted.append('Discriminator loss: {:.2f}'.format(metrics['discr_loss'].avg))
         return formatted
 
     def _forward(self, batch, training=True):
@@ -380,16 +398,31 @@ class NMTTrainer(Trainer):
         encoder_out, decoder_out, attn_out = self.model(encoder_input, decoder_input, encoder_mask, decoder_mask)
         lprobs = self.model.get_normalized_probs(decoder_out, attn_out, encoder_input,
                                             encoder_mask, decoder_mask, log_probs=True)
-        encoder_classified = self.discriminator(encoder_out)
 
         if training:
             targets = targets.masked_select(decoder_mask)
-        return self.loss(lprobs, targets)
+        l_decoder = self.loss(lprobs, targets)
+
+        if self.args.discriminator:
+            encoder_classified = self.model.discriminator(encoder_out)
+            l_discriminator = self.discriminator_loss(encoder_classified, batch['domain_label'])
+            correct = encoder_classified.argmax(dim=1).eq(batch['domain_label']).sum(dim=0).item()
+            discriminator_accuracy = correct / batch['n']
+            return l_decoder[0], l_decoder[1], l_discriminator, discriminator_accuracy
+        else:
+            return l_decoder
+
 
     def _forward_backward_pass(self, batch, metrics):
         src_size = batch.get('src_size')
         tgt_size = batch.get('tgt_size')
-        loss, display_loss = self._forward(batch)
+        if self.args.discriminator:
+            loss_decoder, display_loss, loss_discriminator, discriminator_accuracy = self._forward(batch)
+            loss = loss_decoder + self.args.discriminator_weight * loss_discriminator
+            metrics['discr_loss'].update(loss_discriminator.item(), batch['n'])
+            metrics['discr_acc'].update(discriminator_accuracy * batch['n'], batch['n'])
+        else:
+            loss, display_loss = self._forward(batch)
         self.optimizer.backward(loss)
         metrics['nll'].update(display_loss, tgt_size)
         metrics['src_tps'].update(src_size)
@@ -408,17 +441,27 @@ class NMTTrainer(Trainer):
     def _get_eval_metrics(self):
         metrics = super()._get_eval_metrics()
         metrics['nll'] = AverageMeter()
+        metrics['discr_loss'] = AverageMeter()
+        metrics['discr_acc'] = AverageMeter()
         return metrics
 
     def format_eval_metrics(self, metrics):
         formatted = super().format_eval_metrics(metrics)
         formatted.append('Validation perplexity: {:.2f}'.format(math.exp(metrics['nll'].avg)))
+        if self.args.discriminator:
+            formatted.append('Discriminator accuracy: {:.4f}'.format(metrics['discr_acc'].avg))
+            formatted.append('Discriminator loss: {:.2f}'.format(metrics['discr_loss'].avg))
         return formatted
 
     def _eval_pass(self, task, batch, metrics):
         tgt_size = batch.get('tgt_size')
-        _, display_loss = self._forward(batch, training=False)
-        metrics['nll'].update(display_loss, tgt_size)
+        if self.args.discriminator:
+            _, loss_decoder, loss_discriminator, discriminator_accuracy = self._forward(batch, training=False)
+            metrics['discr_loss'].update(loss_discriminator.item(), batch['n'])
+            metrics['discr_acc'].update(discriminator_accuracy * batch['n'], batch['n'])
+        else:
+            loss_decoder = self._forward(batch, training=False)[1]
+        metrics['nll'].update(loss_decoder, tgt_size)
 
     def _get_sequence_generator(self, task):
         return SequenceGenerator([self.model], self.tgt_dict, self.model.batch_first,

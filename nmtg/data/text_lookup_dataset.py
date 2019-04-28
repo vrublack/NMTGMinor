@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TextLookupDataset(Dataset):
     def __init__(self, text_dataset: TextLineDataset, dictionary: Dictionary, words=True,
-                 lower=False, bos=True, eos=True, align_right=False, trunc_len=0, lang=None):
+                 lower=False, bos=True, eos=True, align_right=False, trunc_len=0, lang=None, domain_label=False):
         """
         A dataset which contains indices derived by splitting
         text lines and looking up indices in a dictionary
@@ -23,6 +23,7 @@ class TextLookupDataset(Dataset):
         :param bos: Whether to include a beginning-of-sequence token
         :param eos: Whether to include an end-of-sequence token
         :param align_right: Whether to align the padded batches to the right
+        :param domain_label: Whether to treat last sequence element as the domain label for the sequence that shouldn't be in the sequence because the discriminator has to classify it
         """
         self.source = text_dataset
         self.dictionary = dictionary
@@ -33,12 +34,23 @@ class TextLookupDataset(Dataset):
         self.align_right = align_right
         self.trunc_len = trunc_len
         self.lang = lang
+        self.domain_label = domain_label
 
     def __len__(self):
         return len(self.source)
 
     def __getitem__(self, index):
         line = self.source[index]
+        has_domain_label = False
+        if self.domain_label:
+            dom_tag_start_str = '<dom'
+            dom_tag_end_str = '>'
+            start_pos = line.find(dom_tag_start_str)
+            if start_pos != -1:  # on target side there are no labels
+                has_domain_label = True
+                end_pos = line.find(dom_tag_end_str, start_pos + 1)
+                domain_index = int(line[start_pos + len(dom_tag_start_str):end_pos]) - 1
+                line = line[:start_pos]
         if self.lower:
             line = line.lower()
         if self.words:
@@ -48,10 +60,15 @@ class TextLookupDataset(Dataset):
         if len(line) == 0:
             logger.warning('Zero-length input at {}'.format(index))
         if self.lang is None:
-            return self.dictionary.to_indices(line, bos=self.bos, eos=self.eos)
+            seq = self.dictionary.to_indices(line, bos=self.bos, eos=self.eos)
         else:
             # noinspection PyArgumentList
-            return self.dictionary.to_indices(line, bos=self.bos, eos=self.eos, lang=self.lang)
+            seq = self.dictionary.to_indices(line, bos=self.bos, eos=self.eos, lang=self.lang)
+
+        if has_domain_label:
+            return seq, domain_index
+        else:
+            return seq
 
     def collate_samples(self, samples):
         indices, lengths = data_utils.collate_sequences(samples,

@@ -9,23 +9,32 @@ from nmtg.data.text_lookup_dataset import TextLookupDataset
 
 class NoisyTextDataset(Dataset):
     def __init__(self, lookup_dataset: TextLookupDataset, word_shuffle=3, word_dropout=0.1, word_blank=0.2,
-                 bpe_symbol='@@ '):
+                 bpe_symbol='@@ ', domain_label=False):
         self.source = lookup_dataset
         self.word_shuffle = word_shuffle
         self.word_dropout = word_dropout
         self.word_blank = word_blank
         self.bpe_symbol = bpe_symbol
         self.dictionary = lookup_dataset.dictionary
+        self.domain_label = domain_label
 
     def __len__(self):
         return len(self.source)
 
     def __getitem__(self, index):
-        sample = self.source[index]
+        if self.domain_label:
+            sample, domain = self.source[index]
+        else:
+            sample = self.source[index]
+
         sample = self.shuffle(sample)
         sample = self.dropout(sample)
         sample = self.blank(sample)
-        return sample
+
+        if self.domain_label:
+            return sample, domain
+        else:
+            return sample
 
     def shuffle(self, sample):
         if self.word_shuffle == 0:

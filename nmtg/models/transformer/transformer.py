@@ -3,6 +3,7 @@ import math
 from torch import nn
 import torch.utils.checkpoint
 
+from nmtg.adapt.discriminator import Discriminator
 from nmtg.models import register_model
 from nmtg.models.encoder_decoder import Encoder, IncrementalDecoder, EncoderDecoderModel, IncrementalModule
 from nmtg.modules.attention import MultiHeadAttention
@@ -89,6 +90,7 @@ class Transformer(EncoderDecoderModel):
     @staticmethod
     def add_options(parser):
         EncoderDecoderModel.add_options(parser)
+        Discriminator.add_options(parser)
         parser.add_argument('-layers', type=int, default=6,
                             help='Number of layers in the encoder/decoder')
         parser.add_argument('-model_size', type=int, default=512,

@@ -25,9 +25,8 @@ class Discriminator(nn.Module):
         else:
             return h, c
 
-    def forward(self, context, lambd):
-        # input: (batch x seq_len x input_size) but expected (seq_len x batch x input_size)
-        x = context.transpose(0, 1)
+    def forward(self, x):
+        # input: (seq_len x batch x input_size)
         # hidden are ideally created only once but the batch size changes
         hidden = self.init_hidden(x.shape[1])
         lstm_out, hidden = self.lstm(x, hidden)
@@ -36,3 +35,15 @@ class Discriminator(nn.Module):
         x = self.fc(h)
         x = x.squeeze(1)
         return log_softmax(x, dim=1)
+
+    @staticmethod
+    def add_options(parser):
+        parser.add_argument('-discriminator_size', type=int, default=20,
+                            help='Dimension of hidden layer (rnn) in discriminator')
+        parser.add_argument('-discriminator_dropout', type=float, default=0.1,
+                            help='Dropout applied to rnn in discriminator')
+        parser.add_argument('-discriminator', action='store_true',
+                            help='Use a discriminator')
+        parser.add_argument('-discriminator_weight', type=float, default=1.0,
+                            help='Multiplier for the discriminator loss')
+

@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 
 import numpy as np
 
@@ -47,10 +48,15 @@ class TextLookupDataset(Dataset):
             dom_tag_end_str = '>'
             start_pos = line.find(dom_tag_start_str)
             if start_pos != -1:  # on target side there are no labels
-                has_domain_label = True
-                end_pos = line.find(dom_tag_end_str, start_pos + 1)
-                domain_index = int(line[start_pos + len(dom_tag_start_str):end_pos]) - 1
-                line = line[:start_pos]
+                try:
+                    has_domain_label = True
+                    end_pos = line.find(dom_tag_end_str, start_pos + 1)
+                    domain_index = int(line[start_pos + len(dom_tag_start_str):end_pos]) - 1
+                    line = line[:start_pos]
+                except:
+                    logger.warning('Invalid domain label for sentence: "{}"'.format(self.source[index]))
+                    domain_index = random.randint(0, 1)
+                    line = line[:start_pos]
         if self.lower:
             line = line.lower()
         if self.words:

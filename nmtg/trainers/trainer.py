@@ -94,7 +94,7 @@ class Trainer:
             self._build_optimizer()
 
         if checkpoint is not None:
-            self.model.load_state_dict(checkpoint['model'])
+            self.model.load_state_dict(checkpoint['model'], strict=False)
 
     def _build_data(self):
         self.training_steps = 0

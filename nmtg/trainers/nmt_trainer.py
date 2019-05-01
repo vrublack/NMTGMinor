@@ -238,7 +238,7 @@ class NMTTrainer(Trainer):
 
         self.model = EncoderDecoderModel(encoder, decoder)
         if self.args.discriminator:
-            self.model.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
+            self.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
 
         self.model.batch_first = model_args.batch_first
 
@@ -404,7 +404,7 @@ class NMTTrainer(Trainer):
         l_decoder = self.loss(lprobs, targets)
 
         if self.args.discriminator:
-            encoder_classified = self.model.discriminator(encoder_out)
+            encoder_classified = self.discriminator(encoder_out)
             l_discriminator = self.discriminator_loss(encoder_classified, batch['domain_label'])
             correct = encoder_classified.argmax(dim=1).eq(batch['domain_label']).sum(dim=0).item()
             discriminator_accuracy = correct / batch['n']

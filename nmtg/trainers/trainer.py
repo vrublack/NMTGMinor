@@ -120,6 +120,8 @@ class Trainer:
 
     def _load_optimizer_state_dict(self, checkpoint):
         self.optimizer.load_state_dict(checkpoint['optimizer'])
+        if self.args.discriminator and len(self.optimizer._optimizer.param_groups) == 1:
+            self.optimizer._optimizer.add_param_group({'params': self.discriminator.parameters()})
         self.scheduler.load_state_dict(checkpoint['lr_scheduler'])
 
     def _save_optimizer_sate_dict(self, checkpoint):

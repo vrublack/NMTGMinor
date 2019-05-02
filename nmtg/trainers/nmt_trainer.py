@@ -239,6 +239,8 @@ class NMTTrainer(Trainer):
         self.model = EncoderDecoderModel(encoder, decoder)
         if self.args.discriminator:
             self.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
+            if self.args.cuda:
+                self.discriminator.cuda()
 
         self.model.batch_first = model_args.batch_first
 

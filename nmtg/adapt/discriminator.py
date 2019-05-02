@@ -14,13 +14,13 @@ class Discriminator(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_dim, classes)
         self.hidden_dim = hidden_dim
-        self.cuda = opt.cuda
+        self.use_cuda = opt.cuda
 
     def init_hidden(self, size_batch):
         # num_layers x minibatch_size x hidden_dim
         h, c = (torch.zeros(1, size_batch, self.hidden_dim),
                 torch.zeros(1, size_batch, self.hidden_dim))
-        if self.cuda:
+        if self.use_cuda:
             return h.cuda(), c.cuda()
         else:
             return h, c

@@ -95,6 +95,8 @@ class Trainer:
 
         if checkpoint is not None:
             self.model.load_state_dict(checkpoint['model'], strict=False)
+            if 'discriminator' in checkpoint and args.discriminator:
+                self.discriminator.load_state_dict(checkpoint['discriminator'], strict=False)
 
     def _build_data(self):
         self.training_steps = 0
@@ -119,8 +121,12 @@ class Trainer:
         self.scheduler = lr_scheduler.build_lr_scheduler(self.args.update_method, self.args, self.optimizer)
 
     def _load_optimizer_state_dict(self, checkpoint):
+        if len(checkpoint['optimizer']['param_groups']) == 2:
+            # already add param group here in this case because it is contained in the checkpoint
+            self.optimizer._optimizer.add_param_group({'params': self.discriminator.parameters()})
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         if self.args.discriminator and len(self.optimizer._optimizer.param_groups) == 1:
+            # add param group here if it hasn't been added yet
             self.optimizer._optimizer.add_param_group({'params': self.discriminator.parameters()})
         self.scheduler.load_state_dict(checkpoint['lr_scheduler'])
 
@@ -333,6 +339,8 @@ class Trainer:
                       'epoch': epoch,
                       'model': self.model.state_dict(),
                       'args': self.args}
+        if self.args.discriminator:
+            checkpoint['discriminator'] = self.discriminator.state_dict()
         self._save_data(checkpoint)
         self._save_optimizer_sate_dict(checkpoint)
         return checkpoint

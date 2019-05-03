@@ -490,6 +490,8 @@ class NMTTrainer(Trainer):
         test_iterator = self._get_iterator(test_dataset, test_sampler)
 
         results = []
+        if self.args.discriminator:
+            acc = AverageMeter()
         for batch in tqdm(test_iterator, desc='inference', disable=self.args.no_progress):
 
             res, src = self._inference_pass(test_task, batch, generator)
@@ -505,7 +507,14 @@ class NMTTrainer(Trainer):
 
             results.extend(beam['tokens'] for beam in res)
 
-        return results
+            if self.args.discriminator:
+                _, _, _, discriminator_accuracy = self._forward(batch, False)
+                acc.update(discriminator_accuracy * batch['n'], batch['n'])
+
+        if self.args.discriminator:
+            return results, acc.avg
+        else:
+            return results, None
 
     def online_translate(self, in_stream, **kwargs):
         self.model.eval()

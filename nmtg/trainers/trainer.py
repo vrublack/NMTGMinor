@@ -209,7 +209,7 @@ class Trainer:
         if eval_task is not None:
             eval_metrics = self.evaluate(eval_task)
             logger.info(' | '.join(self.format_eval_metrics(eval_metrics)))
-            test_results = self.solve(eval_task)
+            test_results = self.solve(eval_task)[0]
             test_metrics = eval_task.score_results(test_results)
             logger.info(' | '.join(test_metrics))
         else:
@@ -267,7 +267,7 @@ class Trainer:
                         if eval_task is not None:
                             eval_metrics = self.evaluate(eval_task)
                             logger.info(' | '.join(self.format_eval_metrics(eval_metrics)))
-                            test_results = self.solve(eval_task)
+                            test_results = self.solve(eval_task)[0]
                             test_metrics = eval_task.score_results(test_results)
                             logger.info(' | '.join(test_metrics))
                             self.model.train()

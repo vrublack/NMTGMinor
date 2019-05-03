@@ -40,9 +40,13 @@ if __name__ == '__main__':
 
     trainer = trainer_class(args, for_training=False, checkpoint=checkpoint)
 
-    results = trainer.solve(task)
+    if args.discriminator:
+        results, discr_accuracy = trainer.solve(task)
+        logger.info(' | '.join(task.score_results(results) + ['Discriminator accuracy: {}'.format(discr_accuracy)]))
 
-    logger.info(' | '.join(task.score_results(results)))
+    else:
+        results = trainer.solve(task)[0]
+        logger.info(' | '.join(task.score_results(results)))
 
     if args.output is not None:
         os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)

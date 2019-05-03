@@ -37,13 +37,15 @@ class Discriminator(nn.Module):
         return log_softmax(x, dim=1)
 
     @staticmethod
-    def add_options(parser):
-        parser.add_argument('-discriminator_size', type=int, default=20,
-                            help='Dimension of hidden layer (rnn) in discriminator')
-        parser.add_argument('-discriminator_dropout', type=float, default=0.1,
-                            help='Dropout applied to rnn in discriminator')
+    def add_options(parser, eval=False):
         parser.add_argument('-discriminator', action='store_true',
                             help='Use a discriminator')
         parser.add_argument('-discriminator_weight', type=float, default=1.0,
                             help='Multiplier for the discriminator loss')
+
+        if not eval:
+            parser.add_argument('-discriminator_size', type=int, default=20,
+                                help='Dimension of hidden layer (rnn) in discriminator')
+            parser.add_argument('-discriminator_dropout', type=float, default=0.1,
+                                help='Dropout applied to rnn in discriminator')
 

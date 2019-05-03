@@ -83,7 +83,8 @@ class Trainer:
         else:
             self._build_data()
 
-        self._build_model(checkpoint['args'] if not for_training else args)
+        model_args = checkpoint['args'] if not for_training else args
+        self._build_model(model_args)
 
         if args.cuda:
             self.model.cuda()
@@ -95,7 +96,7 @@ class Trainer:
 
         if checkpoint is not None:
             self.model.load_state_dict(checkpoint['model'], strict=False)
-            if 'discriminator' in checkpoint and args.discriminator:
+            if 'discriminator' in checkpoint and model_args.discriminator:
                 self.discriminator.load_state_dict(checkpoint['discriminator'], strict=False)
 
     def _build_data(self):

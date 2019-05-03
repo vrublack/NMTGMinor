@@ -42,6 +42,7 @@ class NMTTrainer(Trainer):
     def add_inference_options(cls, parser, argv=None):
         super().add_inference_options(parser, argv)
         cls._add_inference_data_options(parser, argv)
+        Discriminator.add_options(parser, True)
         parser.add_argument('-input_type', default='word', choices=['word', 'char'],
                             help='Type of dictionary to create.')
         parser.add_argument('-beam_size', type=int, default=5, help='Beam size')
@@ -237,8 +238,8 @@ class NMTTrainer(Trainer):
                 param.requires_grad_(False)
 
         self.model = EncoderDecoderModel(encoder, decoder)
-        if self.args.discriminator:
-            self.discriminator = Discriminator(self.args, self.args.model_size, self.args.discriminator_size, self.args.discriminator_dropout)
+        if model_args.discriminator:
+            self.discriminator = Discriminator(model_args, model_args.model_size, model_args.discriminator_size, model_args.discriminator_dropout)
             if self.args.cuda:
                 self.discriminator.cuda()
 

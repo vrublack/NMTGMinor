@@ -230,6 +230,12 @@ class NMTTrainer(Trainer):
         else:
             decoder = NMTDecoder(model.decoder, tgt_embedding, model_args.word_dropout, tgt_linear)
 
+        self.model = EncoderDecoderModel(encoder, decoder)
+        if model_args.discriminator:
+            self.discriminator = Discriminator(model_args, model_args.model_size, model_args.discriminator_size, model_args.discriminator_dropout)
+            if self.args.cuda:
+                self.discriminator.cuda()
+
         if model_args.freeze_model:
             logger.info('Freezing model parameters')
             for param in itertools.chain(encoder.parameters(), decoder.decoder.parameters(),
@@ -237,11 +243,8 @@ class NMTTrainer(Trainer):
                                          tgt_linear.parameters()):
                 param.requires_grad_(False)
 
-        self.model = EncoderDecoderModel(encoder, decoder)
-        if model_args.discriminator:
-            self.discriminator = Discriminator(model_args, model_args.model_size, model_args.discriminator_size, model_args.discriminator_dropout)
-            if self.args.cuda:
-                self.discriminator.cuda()
+            if model_args.discriminator:
+                self.discriminator.parameters().requires_grad_(False)
 
         self.model.batch_first = model_args.batch_first
 

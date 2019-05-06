@@ -131,6 +131,8 @@ class NMTTrainer(Trainer):
                             help='Add an extra attention layer at the end of the model to predict alignment for '
                                  'the copy decoder. For models like transformer, that have no clear attention '
                                  'alignment.')
+        parser.add_argument('-reset_updates', action='store_true',
+                            help='Reset updates and time (e.g. for purposes related to the learning rate) when loading from a pre-trained model.')
 
     def _build_data(self):
         super()._build_data()
@@ -145,7 +147,10 @@ class NMTTrainer(Trainer):
         self._build_loss()
 
     def _load_data(self, checkpoint):
-        super()._load_data(checkpoint)
+        if not self.args.reset_updates:
+            super()._load_data(checkpoint)
+        else:
+            super()._build_data()
         args = checkpoint['args']
         self.args.join_vocab = args.join_vocab
 

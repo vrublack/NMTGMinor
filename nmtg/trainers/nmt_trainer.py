@@ -147,7 +147,7 @@ class NMTTrainer(Trainer):
         self._build_loss()
 
     def _load_data(self, checkpoint):
-        if not self.args.reset_updates:
+        if not (hasattr(self.args, 'reset_updates') and self.args.reset_updates):
             super()._load_data(checkpoint)
         else:
             super()._build_data()

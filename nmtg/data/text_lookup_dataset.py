@@ -47,7 +47,7 @@ class TextLookupDataset(Dataset):
             line = line[:self.trunc_len]
         if len(line) == 0:
             logger.warning('Zero-length input at {}'.format(index))
-            line = 'zero length'
+            line = ['zero']
         if self.lang is None:
             return self.dictionary.to_indices(line, bos=self.bos, eos=self.eos)
         else:

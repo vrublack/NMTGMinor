@@ -202,10 +202,13 @@ class Trainer:
             logger.info(' | '.join(self.format_eval_metrics(eval_metrics)))
             test_results = self.solve(eval_task)
             test_metrics = eval_task.score_results(test_results)
+            bleu = float(test_metrics[0][:test_metrics[0].find(' ')])
             logger.info(' | '.join(test_metrics))
         else:
             eval_metrics = {}
-        self._save_checkpoint(epoch, train_sampler, eval_metrics.get('nll', None))
+            bleu = 0
+
+        self._save_checkpoint(epoch, train_sampler, bleu, eval_metrics.get('nll', None))
 
     def _train_epoch(self, epoch, dataset, sampler, metrics, eval_task=None):
         self.model.train()
@@ -264,7 +267,7 @@ class Trainer:
                             self.model.train()
                         else:
                             eval_metrics = {}
-                        self._save_checkpoint(epoch, sampler, eval_metrics.get('nll', None))
+                        self._save_checkpoint(epoch, sampler, float(test_metrics[0][:test_metrics[0].find(' ')]), eval_metrics.get('nll', None))
 
                 formatted = self._format_train_metrics(metrics)
                 formatted = ['Epoch {:2d}'.format(epoch)] + formatted
@@ -338,7 +341,7 @@ class Trainer:
     def _deal_with_oom(self, metrics):
         self.optimizer.zero_grad()
 
-    def _save_checkpoint(self, epoch, train_sampler, valid_nll=None, destination=None):
+    def _save_checkpoint(self, epoch, train_sampler, valid_bleu, valid_nll=None, destination=None):
         logger.info('Saving checkpoint')
         if destination is None:
             destination = self.args.save_model
@@ -351,7 +354,7 @@ class Trainer:
             valid_ppl = math.exp(valid_nll.avg)
         ep = float(epoch) - 1. + ((float(train_sampler.index) + 1.) / len(train_sampler))
 
-        file_name = '{}_ppl_{:.2f}_e{:.2f}.pt'.format(self.args.model, valid_ppl, ep)
+        file_name = '{}_bleu_{:.2f}_ppl_{:.2f}_e{:.2f}.pt'.format(self.args.model, valid_bleu, valid_ppl, ep)
         file_name = os.path.join(destination, file_name)
 
         logger.info('Writing to {}'.format(file_name))
@@ -371,7 +374,7 @@ class Trainer:
         model_class.upgrade_args(args)
 
 
-def checkpoint_paths(path, pattern=r'(.*)_ppl_(\d+\.\d+)\_e(\d+\.\d+)\.pt'):
+def checkpoint_paths(path, pattern=r'(.*)_bleu_(\d+\.\d+)_ppl_(\d+\.\d+)\_e(\d+\.\d+)\.pt'):
     """Retrieves all checkpoints found in `path` directory.
     Checkpoints are identified by matching filename to the specified pattern. If
     the pattern contains groups, the result will be sorted by the second group in
